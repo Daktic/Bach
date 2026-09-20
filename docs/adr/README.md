@@ -13,6 +13,7 @@ An ADR captures a significant architectural decision: the context, the decision 
 | [0003](0003-feature-folder-component-structure.md) | Feature-folder component structure | Proposed |
 | [0004](0004-hamburger-slide-out-drawer-navigation.md) | Hamburger / slide-out drawer navigation | Proposed |
 | [0005](0005-timeline-homepage-with-countdown-dialog.md) | Timeline as homepage with pre-trip countdown dialog | Proposed |
+| [0006](0006-activity-data-via-server-functions.md) | Activity data via server functions with a swappable source | Proposed |
 
 ## Process
 

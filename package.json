@@ -9,12 +9,15 @@
   },
   "dependencies": {
     "@solidjs/start": "^2.0.0",
+    "nitro": "^3.0.260610-beta",
     "solid-js": "^1.9.14",
-    "vite": "^8.0.0",
-    "nitro": "^3.0.260610-beta"
+    "vite": "^8.0.0"
   },
   "engines": {
     "node": ">=24"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
 }
