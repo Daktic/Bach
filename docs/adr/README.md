@@ -9,6 +9,7 @@ An ADR captures a significant architectural decision: the context, the decision 
 | # | Title | Status |
 |---|-------|--------|
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
+| [0002](0002-use-solidstart-as-meta-framework.md) | Use SolidStart as the application meta-framework | Accepted |
 
 ## Process
 
