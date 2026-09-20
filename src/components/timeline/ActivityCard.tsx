@@ -10,7 +10,7 @@ export function ActivityCard(props: Props) {
     <button
       type="button"
       onClick={props.onClick}
-      class="flex w-full items-center gap-3 rounded-lg border border-charcoal/10 bg-cream p-3 text-left shadow-sm transition-shadow hover:shadow-md active:scale-[0.99]"
+      class="flex w-full items-center gap-3 rounded-lg paper-card p-3 text-left transition-all hover:brightness-[1.02] active:scale-[0.99]"
     >
       <div class="h-16 w-16 shrink-0 overflow-hidden rounded-md">
         {props.activity.image ? (

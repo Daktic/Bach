@@ -78,7 +78,7 @@ export function CountdownDialog() {
     <dialog
       ref={ref!}
       onClose={dismiss}
-      class="w-full max-w-xs rounded-2xl bg-cream p-0 shadow-2xl backdrop:bg-charcoal/50 backdrop:backdrop-blur-sm"
+      class="w-full max-w-xs rounded-2xl paper-card p-0 backdrop:bg-charcoal/50 backdrop:backdrop-blur-sm"
     >
       <Show when={countdown()}>
         {(cd) => (

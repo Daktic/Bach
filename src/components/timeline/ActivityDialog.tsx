@@ -29,7 +29,7 @@ export function ActivityDialog(props: Props) {
     <dialog
       ref={ref!}
       onClose={props.onClose}
-      class="w-full max-w-sm rounded-xl bg-cream p-0 shadow-xl backdrop:bg-charcoal/40 backdrop:backdrop-blur-sm"
+      class="w-full max-w-sm rounded-xl paper-card p-0 backdrop:bg-charcoal/50 backdrop:backdrop-blur-sm"
     >
       <Show when={props.activity}>
         {(activity) => (
