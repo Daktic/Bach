@@ -14,6 +14,8 @@ An ADR captures a significant architectural decision: the context, the decision 
 | [0004](0004-hamburger-slide-out-drawer-navigation.md) | Hamburger / slide-out drawer navigation | Proposed |
 | [0005](0005-timeline-homepage-with-countdown-dialog.md) | Timeline as homepage with pre-trip countdown dialog | Proposed |
 | [0006](0006-activity-data-via-server-functions.md) | Activity data via server functions with a swappable source | Proposed |
+| [0007](0007-turso-sqlite-storage.md) | Turso (SQLite at the edge) for persistent storage | Proposed |
+| [0008](0008-aerodatabox-live-flight-status.md) | AeroDataBox for live flight status | Proposed |
 
 ## Process
 

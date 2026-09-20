@@ -12,6 +12,32 @@ export interface Activity {
 
 export type DayStatus = "past" | "current" | "future";
 
+// ─── Flights ──────────────────────────────────────────────────────────────────
+
+export type FlightStatus = "upcoming" | "boarding" | "in_air" | "landed" | "delayed";
+
+export interface GuestFlight {
+  id: string;
+  guestName: string;
+  flightNumber: string;
+  airline: string;
+  origin: string;       // IATA code e.g. "JFK"
+  destination: string;  // IATA code e.g. "PHX"
+  departsAt: string;    // ISO local datetime "2027-04-08T09:00:00"
+  arrivesAt: string;    // ISO local datetime "2027-04-08T13:45:00"
+}
+
+export interface GuestFlightWithStatus extends GuestFlight {
+  status: FlightStatus;
+  progressFraction: number;    // 0–1, meaningful only for in_air
+  minutesUntilArrival: number; // negative once landed
+}
+
+export interface GuestWithoutFlight {
+  id: string;
+  guestName: string;
+}
+
 export interface TripDay {
   date: string;        // "YYYY-MM-DD"
   label: string;       // "Thursday · Apr 8"
