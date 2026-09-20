@@ -3,8 +3,8 @@ import { createSignal, For, onMount, Suspense } from "solid-js";
 import type { Activity, TripDay } from "~/lib/types";
 import { getDayStatus } from "~/lib/time";
 import { getActivityDays } from "~/lib/api/activities";
-import { ActivityCard } from "./ActivityCard";
 import { ActivityDialog } from "./ActivityDialog";
+import { CountdownDialog } from "./CountdownDialog";
 import { DaySection } from "./DaySection";
 
 export function Timeline() {
@@ -33,6 +33,7 @@ export function Timeline() {
         </Suspense>
       </div>
 
+      <CountdownDialog />
       <ActivityDialog activity={selected()} onClose={() => setSelected(null)} />
     </>
   );
