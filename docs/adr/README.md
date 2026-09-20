@@ -1,0 +1,20 @@
+# Architecture Decision Records
+
+This directory contains Architecture Decision Records (ADRs) for the Bach project.
+
+An ADR captures a significant architectural decision: the context, the decision made, and its consequences.
+
+## Index
+
+| # | Title | Status |
+|---|-------|--------|
+| [0001](0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
+
+## Process
+
+- **Proposed** — under discussion
+- **Accepted** — decision in force
+- **Deprecated** — superseded but kept for history
+- **Superseded by [NNNN]** — replaced by a later ADR
+
+To propose a new ADR, copy the template from ADR 0001, assign the next number, and open it for review.
