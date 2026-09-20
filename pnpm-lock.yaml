@@ -13,26 +13,29 @@ importers:
         version: 0.41.3
       '@auth/solid-start':
         specifier: ^0.19.3
-        version: 0.19.3(solid-js@1.9.14)(solid-start@0.2.32(@solidjs/meta@0.29.4(solid-js@1.9.14))(@solidjs/router@0.16.3(solid-js@1.9.14))(rolldown@1.2.0)(solid-js@1.9.14)(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)))
+        version: 0.19.3(solid-js@1.9.14)(solid-start@0.2.32(@solidjs/meta@0.29.4(solid-js@1.9.14))(@solidjs/router@0.16.3(solid-js@1.9.14))(rolldown@1.2.0)(solid-js@1.9.14)(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)))
       '@solidjs/router':
         specifier: ^0.16.3
         version: 0.16.3(solid-js@1.9.14)
       '@solidjs/start':
         specifier: ^2.0.0
-        version: 2.0.0(@solidjs/router@0.16.3(solid-js@1.9.14))(crossws@0.4.10(srvx@0.11.22))(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
+        version: 2.0.0(@solidjs/router@0.16.3(solid-js@1.9.14))(crossws@0.4.10(srvx@0.11.22))(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
       nitro:
         specifier: ^3.0.260610-beta
-        version: 3.0.260610-beta(dotenv@16.6.1)(jiti@2.7.0)(rollup@3.30.0)(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
+        version: 3.0.260610-beta(dotenv@16.6.1)(jiti@2.7.0)(rollup@3.30.0)(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
       vite:
         specifier: ^8.0.0
-        version: 8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
+        version: 8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.3.3
-        version: 4.3.3(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
+        version: 4.3.3(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
+      '@types/node':
+        specifier: ^26.6.2
+        version: 26.6.2
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
@@ -1321,6 +1324,9 @@ packages:
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
+  '@types/node@26.6.2':
+    resolution: {integrity: sha512-X1P21scMv4zGKLYqjdGjaKa7COa0RKVYYZZN/NfvLQ1JegxFhdhpZG/Lyn8AXx6CDUavKAd11v6BvfpkDByK8g==}
+
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
 
@@ -2483,6 +2489,9 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  undici-types@8.9.0:
+    resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
+
   undici@5.29.0:
     resolution: {integrity: sha512-raqeBD6NQK4SkWhQzeYKd1KmIG6dllBOTt55Rmkt4HtI9mwdWtJljnrXjAFUBLTSN67HWrOIZ3EPF4kjUw80Bg==}
     engines: {node: '>=14.0'}
@@ -2748,11 +2757,11 @@ snapshots:
       preact: 10.24.3
       preact-render-to-string: 6.5.11(preact@10.24.3)
 
-  '@auth/solid-start@0.19.3(solid-js@1.9.14)(solid-start@0.2.32(@solidjs/meta@0.29.4(solid-js@1.9.14))(@solidjs/router@0.16.3(solid-js@1.9.14))(rolldown@1.2.0)(solid-js@1.9.14)(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)))':
+  '@auth/solid-start@0.19.3(solid-js@1.9.14)(solid-start@0.2.32(@solidjs/meta@0.29.4(solid-js@1.9.14))(@solidjs/router@0.16.3(solid-js@1.9.14))(rolldown@1.2.0)(solid-js@1.9.14)(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)))':
     dependencies:
       '@auth/core': 0.41.3
       solid-js: 1.9.14
-      solid-start: 0.2.32(@solidjs/meta@0.29.4(solid-js@1.9.14))(@solidjs/router@0.16.3(solid-js@1.9.14))(rolldown@1.2.0)(solid-js@1.9.14)(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
+      solid-start: 0.2.32(@solidjs/meta@0.29.4(solid-js@1.9.14))(@solidjs/router@0.16.3(solid-js@1.9.14))(rolldown@1.2.0)(solid-js@1.9.14)(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
     transitivePeerDependencies:
       - '@simplewebauthn/browser'
       - '@simplewebauthn/server'
@@ -2804,7 +2813,7 @@ snapshots:
 
   '@babel/helper-annotate-as-pure@7.29.7':
     dependencies:
-      '@babel/types': 7.29.7
+      '@babel/types': 7.29.8
 
   '@babel/helper-compilation-targets@7.29.7':
     dependencies:
@@ -2822,7 +2831,7 @@ snapshots:
       '@babel/helper-optimise-call-expression': 7.29.7
       '@babel/helper-replace-supers': 7.29.7(@babel/core@7.29.7)
       '@babel/helper-skip-transparent-expression-wrappers': 7.29.7
-      '@babel/traverse': 7.29.7
+      '@babel/traverse': 7.29.8
       semver: 6.3.1
     transitivePeerDependencies:
       - supports-color
@@ -2849,8 +2858,8 @@ snapshots:
 
   '@babel/helper-member-expression-to-functions@7.29.7':
     dependencies:
-      '@babel/traverse': 7.29.7
-      '@babel/types': 7.29.7
+      '@babel/traverse': 7.29.8
+      '@babel/types': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -2876,7 +2885,7 @@ snapshots:
 
   '@babel/helper-optimise-call-expression@7.29.7':
     dependencies:
-      '@babel/types': 7.29.7
+      '@babel/types': 7.29.8
 
   '@babel/helper-plugin-utils@7.28.6': {}
 
@@ -2887,7 +2896,7 @@ snapshots:
       '@babel/core': 7.29.7
       '@babel/helper-annotate-as-pure': 7.29.7
       '@babel/helper-wrap-function': 7.29.7
-      '@babel/traverse': 7.29.7
+      '@babel/traverse': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -2896,14 +2905,14 @@ snapshots:
       '@babel/core': 7.29.7
       '@babel/helper-member-expression-to-functions': 7.29.7
       '@babel/helper-optimise-call-expression': 7.29.7
-      '@babel/traverse': 7.29.7
+      '@babel/traverse': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
   '@babel/helper-skip-transparent-expression-wrappers@7.29.7':
     dependencies:
-      '@babel/traverse': 7.29.7
-      '@babel/types': 7.29.7
+      '@babel/traverse': 7.29.8
+      '@babel/types': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -2916,8 +2925,8 @@ snapshots:
   '@babel/helper-wrap-function@7.29.7':
     dependencies:
       '@babel/template': 7.29.7
-      '@babel/traverse': 7.29.7
-      '@babel/types': 7.29.7
+      '@babel/traverse': 7.29.8
+      '@babel/types': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -2938,7 +2947,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.29.7
       '@babel/helper-plugin-utils': 7.29.7
-      '@babel/traverse': 7.29.7
+      '@babel/traverse': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -2973,7 +2982,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.29.7
       '@babel/helper-plugin-utils': 7.29.7
-      '@babel/traverse': 7.29.7
+      '@babel/traverse': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -3022,7 +3031,7 @@ snapshots:
       '@babel/core': 7.29.7
       '@babel/helper-plugin-utils': 7.29.7
       '@babel/helper-remap-async-to-generator': 7.29.7(@babel/core@7.29.7)
-      '@babel/traverse': 7.29.7
+      '@babel/traverse': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -3069,7 +3078,7 @@ snapshots:
       '@babel/helper-globals': 7.29.7
       '@babel/helper-plugin-utils': 7.29.7
       '@babel/helper-replace-supers': 7.29.7(@babel/core@7.29.7)
-      '@babel/traverse': 7.29.7
+      '@babel/traverse': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -3083,7 +3092,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.29.7
       '@babel/helper-plugin-utils': 7.29.7
-      '@babel/traverse': 7.29.7
+      '@babel/traverse': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -3140,7 +3149,7 @@ snapshots:
       '@babel/core': 7.29.7
       '@babel/helper-compilation-targets': 7.29.7
       '@babel/helper-plugin-utils': 7.29.7
-      '@babel/traverse': 7.29.7
+      '@babel/traverse': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -3226,7 +3235,7 @@ snapshots:
       '@babel/helper-plugin-utils': 7.29.7
       '@babel/plugin-transform-destructuring': 7.29.7(@babel/core@7.29.7)
       '@babel/plugin-transform-parameters': 7.29.7(@babel/core@7.29.7)
-      '@babel/traverse': 7.29.7
+      '@babel/traverse': 7.29.8
     transitivePeerDependencies:
       - supports-color
 
@@ -3437,7 +3446,7 @@ snapshots:
     dependencies:
       '@babel/core': 7.29.7
       '@babel/helper-plugin-utils': 7.29.7
-      '@babel/types': 7.29.7
+      '@babel/types': 7.29.8
       esutils: 2.0.3
 
   '@babel/preset-typescript@7.29.7(@babel/core@7.29.7)':
@@ -3880,7 +3889,7 @@ snapshots:
     dependencies:
       solid-js: 1.9.14
 
-  '@solidjs/start@2.0.0(@solidjs/router@0.16.3(solid-js@1.9.14))(crossws@0.4.10(srvx@0.11.22))(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))':
+  '@solidjs/start@2.0.0(@solidjs/router@0.16.3(solid-js@1.9.14))(crossws@0.4.10(srvx@0.11.22))(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))':
     dependencies:
       '@babel/core': 7.29.7
       '@babel/traverse': 7.29.7
@@ -3906,8 +3915,8 @@ snapshots:
       source-map-js: 1.2.1
       srvx: 0.12.4
       terracotta: 1.1.1(solid-js@1.9.14)
-      vite: 8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
-      vite-plugin-solid: 2.11.14(solid-js@1.9.14)(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
+      vite: 8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
+      vite-plugin-solid: 2.11.14(solid-js@1.9.14)(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
     optionalDependencies:
       '@solidjs/router': 0.16.3(solid-js@1.9.14)
     transitivePeerDependencies:
@@ -3976,12 +3985,12 @@ snapshots:
       '@tailwindcss/oxide-win32-arm64-msvc': 4.3.3
       '@tailwindcss/oxide-win32-x64-msvc': 4.3.3
 
-  '@tailwindcss/vite@4.3.3(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))':
+  '@tailwindcss/vite@4.3.3(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))':
     dependencies:
       '@tailwindcss/node': 4.3.3
       '@tailwindcss/oxide': 4.3.3
       tailwindcss: 4.3.3
-      vite: 8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
+      vite: 8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
 
   '@tybys/wasm-util@0.10.3':
     dependencies:
@@ -4032,6 +4041,10 @@ snapshots:
       '@types/braces': 3.0.5
 
   '@types/ms@2.1.0': {}
+
+  '@types/node@26.6.2':
+    dependencies:
+      undici-types: 8.9.0
 
   '@types/unist@3.0.3': {}
 
@@ -4663,7 +4676,7 @@ snapshots:
 
   nf3@0.3.22: {}
 
-  nitro@3.0.260610-beta(dotenv@16.6.1)(jiti@2.7.0)(rollup@3.30.0)(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)):
+  nitro@3.0.260610-beta(dotenv@16.6.1)(jiti@2.7.0)(rollup@3.30.0)(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)):
     dependencies:
       consola: 3.4.2
       crossws: 0.4.10(srvx@0.11.22)
@@ -4683,7 +4696,7 @@ snapshots:
       dotenv: 16.6.1
       jiti: 2.7.0
       rollup: 3.30.0
-      vite: 8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
+      vite: 8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
     transitivePeerDependencies:
       - '@azure/app-configuration'
       - '@azure/cosmos'
@@ -5029,11 +5042,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  solid-start@0.2.32(@solidjs/meta@0.29.4(solid-js@1.9.14))(@solidjs/router@0.16.3(solid-js@1.9.14))(rolldown@1.2.0)(solid-js@1.9.14)(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)):
+  solid-start@0.2.32(@solidjs/meta@0.29.4(solid-js@1.9.14))(@solidjs/router@0.16.3(solid-js@1.9.14))(rolldown@1.2.0)(solid-js@1.9.14)(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)):
     dependencies:
       '@babel/core': 7.29.7
-      '@babel/generator': 7.29.7
-      '@babel/plugin-syntax-jsx': 7.28.6(@babel/core@7.29.7)
+      '@babel/generator': 7.29.8
+      '@babel/plugin-syntax-jsx': 7.29.7(@babel/core@7.29.7)
       '@babel/preset-env': 7.29.7(@babel/core@7.29.7)
       '@babel/preset-typescript': 7.29.7(@babel/core@7.29.7)
       '@babel/template': 7.29.7
@@ -5063,9 +5076,9 @@ snapshots:
       solid-js: 1.9.14
       terser: 5.51.2
       undici: 5.29.0
-      vite: 8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
-      vite-plugin-inspect: 0.7.42(rollup@3.30.0)(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
-      vite-plugin-solid: 2.11.14(solid-js@1.9.14)(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
+      vite: 8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
+      vite-plugin-inspect: 0.7.42(rollup@3.30.0)(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
+      vite-plugin-solid: 2.11.14(solid-js@1.9.14)(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
       wait-on: 6.0.1(debug@4.4.3)
     transitivePeerDependencies:
       - '@nuxt/kit'
@@ -5152,6 +5165,8 @@ snapshots:
 
   tslib@2.8.1: {}
 
+  undici-types@8.9.0: {}
+
   undici@5.29.0:
     dependencies:
       '@fastify/busboy': 2.1.1
@@ -5231,7 +5246,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-plugin-inspect@0.7.42(rollup@3.30.0)(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)):
+  vite-plugin-inspect@0.7.42(rollup@3.30.0)(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)):
     dependencies:
       '@antfu/utils': 0.7.10
       '@rollup/pluginutils': 5.4.0(rollup@3.30.0)
@@ -5241,12 +5256,12 @@ snapshots:
       open: 9.1.0
       picocolors: 1.1.1
       sirv: 2.0.4
-      vite: 8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
+      vite: 8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
     transitivePeerDependencies:
       - rollup
       - supports-color
 
-  vite-plugin-solid@2.11.14(solid-js@1.9.14)(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)):
+  vite-plugin-solid@2.11.14(solid-js@1.9.14)(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)):
     dependencies:
       '@babel/core': 7.29.7
       '@types/babel__core': 7.20.5
@@ -5254,12 +5269,12 @@ snapshots:
       merge-anything: 5.1.7
       solid-js: 1.9.14
       solid-refresh: 0.6.3(solid-js@1.9.14)
-      vite: 8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
-      vitefu: 1.1.2(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
+      vite: 8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
+      vitefu: 1.1.2(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2))
     transitivePeerDependencies:
       - supports-color
 
-  vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2):
+  vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2):
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.5
@@ -5267,14 +5282,15 @@ snapshots:
       rolldown: 1.1.5
       tinyglobby: 0.2.17
     optionalDependencies:
+      '@types/node': 26.6.2
       esbuild: 0.17.19
       fsevents: 2.3.3
       jiti: 2.7.0
       terser: 5.51.2
 
-  vitefu@1.1.2(vite@8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)):
+  vitefu@1.1.2(vite@8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)):
     optionalDependencies:
-      vite: 8.1.4(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
+      vite: 8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
 
   wait-on@6.0.1(debug@4.4.3):
     dependencies:

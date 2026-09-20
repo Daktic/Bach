@@ -18,6 +18,7 @@ export type FlightStatus = "upcoming" | "boarding" | "in_air" | "landed" | "dela
 
 export interface GuestFlight {
   id: string;
+  guestId: string;      // matches CrewMember.id — links flight to identity
   guestName: string;
   flightNumber: string;
   airline: string;

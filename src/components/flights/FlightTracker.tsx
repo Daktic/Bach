@@ -3,7 +3,11 @@ import { enrichFlight, sortFlights } from "~/lib/flights";
 import { mockFlights, mockGuestsWithoutFlight } from "~/lib/data/flights";
 import type { GuestFlightWithStatus } from "~/lib/types";
 import { FlightCard } from "./FlightCard";
+import { MyFlightCard } from "./MyFlightCard";
 import { NoFlightCard } from "./NoFlightCard";
+
+// Replaced with session.user.id once auth is wired up
+const CURRENT_USER_ID = "gberg";
 
 function SectionLabel(props: { label: string }) {
   return (
@@ -14,20 +18,27 @@ function SectionLabel(props: { label: string }) {
 }
 
 export function FlightTracker() {
-  // Empty on the server — populated after mount so getCurrentDate() can read
-  // ?mockDate from the URL. Keeps SSR and initial client renders identical.
   const [flights, setFlights] = createSignal<GuestFlightWithStatus[]>([]);
 
   onMount(() => {
     setFlights(sortFlights(mockFlights.map(enrichFlight)));
   });
 
-  const active   = () => flights().filter(f => f.status === "in_air" || f.status === "boarding");
-  const upcoming = () => flights().filter(f => f.status === "upcoming" || f.status === "delayed");
-  const landed   = () => flights().filter(f => f.status === "landed");
+  const myFlight    = () => flights().find(f => f.guestId === CURRENT_USER_ID) ?? null;
+  const otherFlights= () => flights().filter(f => f.guestId !== CURRENT_USER_ID);
+
+  const active   = () => otherFlights().filter(f => f.status === "in_air" || f.status === "boarding");
+  const upcoming = () => otherFlights().filter(f => f.status === "upcoming" || f.status === "delayed");
+  const landed   = () => otherFlights().filter(f => f.status === "landed");
 
   return (
     <div class="mx-auto max-w-lg px-4 py-6 space-y-6">
+
+      {/* My flight — always shown, collapses to "book now" if null */}
+      <section>
+        <SectionLabel label="Your flight" />
+        <MyFlightCard flight={myFlight()} />
+      </section>
 
       {/* Use <Show> not && — SolidJS needs Show for stable SSR hydration markers */}
       <Show when={active().length > 0}>

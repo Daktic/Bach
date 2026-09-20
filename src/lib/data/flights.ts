@@ -1,15 +1,17 @@
 import type { GuestFlight, GuestWithoutFlight } from "~/lib/types";
 
-// All times are local to the trip destination.
-// mockDate=2027-04-08T14:00:00 gives a good spread of statuses for testing:
-//   — Chris & Sarah: landed (arrived before 14:00)
-//   — Jake: in the air (departed 12:30, arrives 16:00)
-//   — Mike: boarding (departs 14:25)
-//   — Ryan: upcoming (departs 18:45)
+// All times are local to the trip destination (MST / Phoenix, no DST).
+// mockDate=2027-04-08T14:00:00 gives a good spread of statuses:
+//   — Chris & Sarah: landed      (arrived before 14:00)
+//   — Garrett:       in the air  (departed 13:30, arrives 15:45 → 33% progress)
+//   — Jake:          in the air  (departed 12:30, arrives 16:00)
+//   — Mike:          boarding    (departs 14:25)
+//   — Ryan:          upcoming    (departs 18:45)
 
 export const mockFlights: GuestFlight[] = [
   {
     id: "f1",
+    guestId: "chris",
     guestName: "Chris",
     flightNumber: "AA 1105",
     airline: "American",
@@ -20,6 +22,7 @@ export const mockFlights: GuestFlight[] = [
   },
   {
     id: "f2",
+    guestId: "sarah",
     guestName: "Sarah",
     flightNumber: "WN 4432",
     airline: "Southwest",
@@ -30,6 +33,18 @@ export const mockFlights: GuestFlight[] = [
   },
   {
     id: "f3",
+    guestId: "gberg",
+    guestName: "Garrett",
+    flightNumber: "AA 321",
+    airline: "American",
+    origin: "LAX",
+    destination: "PHX",
+    departsAt: "2027-04-08T13:30:00",
+    arrivesAt: "2027-04-08T15:45:00",
+  },
+  {
+    id: "f4",
+    guestId: "jake",
     guestName: "Jake",
     flightNumber: "DL 567",
     airline: "Delta",
@@ -39,7 +54,8 @@ export const mockFlights: GuestFlight[] = [
     arrivesAt: "2027-04-08T16:00:00",
   },
   {
-    id: "f4",
+    id: "f5",
+    guestId: "mike",
     guestName: "Mike",
     flightNumber: "UA 892",
     airline: "United",
@@ -49,7 +65,8 @@ export const mockFlights: GuestFlight[] = [
     arrivesAt: "2027-04-08T17:10:00",
   },
   {
-    id: "f5",
+    id: "f6",
+    guestId: "ryan",
     guestName: "Ryan",
     flightNumber: "B6 214",
     airline: "JetBlue",
@@ -61,5 +78,8 @@ export const mockFlights: GuestFlight[] = [
 ];
 
 export const mockGuestsWithoutFlight: GuestWithoutFlight[] = [
-  { id: "g1", guestName: "Tom" },
+  { id: "tom",   guestName: "Tom"    },
+  { id: "alex",  guestName: "Alex"   },
+  { id: "jordan",guestName: "Jordan" },
+  { id: "tyler", guestName: "Tyler"  },
 ];
