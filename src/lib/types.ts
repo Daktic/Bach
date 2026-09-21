@@ -39,6 +39,22 @@ export interface GuestWithoutFlight {
   guestName: string;
 }
 
+// ─── Funds ────────────────────────────────────────────────────────────────────
+
+export interface FundingPool {
+  id: string;
+  title: string;
+  description: string;
+  placeholderGradient: string; // CSS gradient used as hero when no real image is set
+  image?: string;              // /public path — overrides gradient when present
+  targetAmount: number;
+  currentAmount: number;
+  myShare: number;             // what the current user owes
+  myContribution: number;      // what the current user has actually paid in (mock only)
+}
+
+// ─── Trip ─────────────────────────────────────────────────────────────────────
+
 export interface TripDay {
   date: string;        // "YYYY-MM-DD"
   label: string;       // "Thursday · Apr 8"
