@@ -1,9 +1,12 @@
 import { For, onCleanup } from "solid-js";
 import { createStore } from "solid-js/store";
 import { crew } from "~/lib/data/crew";
+import { mockGuestsWithoutFlight } from "~/lib/data/flights";
 import { MockTransport } from "~/lib/status/mock-transport";
 import type { TravelStatus } from "~/lib/status/types";
 import type { CrewMember } from "~/lib/data/crew";
+
+const noFlightIds = new Set(mockGuestsWithoutFlight.map(g => g.id));
 
 // Module-level singleton — this module is only ever loaded client-side via
 // clientOnly(), so the transport is safe as a browser-only singleton.
@@ -63,16 +66,21 @@ function StatusIcon(props: { status: TravelStatus }) {
 function AvatarBadge(props: {
   member: CrewMember;
   status: TravelStatus;
+  noFlight: boolean;
   onClick: () => void;
 }) {
-  const cfg = () => STATUS_CONFIG[props.status];
+  const cfg = () => props.noFlight
+    ? { ring: "border-charcoal/15", badge: "border-charcoal/15 text-charcoal/20", label: "No flight" }
+    : STATUS_CONFIG[props.status];
 
   return (
     <button
       type="button"
       onClick={props.onClick}
-      class="flex flex-col items-center gap-2 focus:outline-none group"
+      class={`flex flex-col items-center gap-2 focus:outline-none group transition-opacity
+              ${props.noFlight ? "opacity-35 pointer-events-none" : ""}`}
       title={`${props.member.name} — ${cfg().label}`}
+      disabled={props.noFlight}
     >
       <div class="relative">
         {/* Avatar ring */}
@@ -87,16 +95,18 @@ function AvatarBadge(props: {
           </span>
         </div>
 
-        {/* Status badge — sits at 6 o'clock, half inside / half outside the ring */}
-        <div
-          class={`absolute -bottom-[9px] left-1/2 -translate-x-1/2
-                  w-[18px] h-[18px] rounded-full
-                  border-[1.5px] ${cfg().badge}
-                  bg-cream flex items-center justify-center
-                  transition-colors duration-300`}
-        >
-          <StatusIcon status={props.status} />
-        </div>
+        {/* Status badge — hidden for members with no flight */}
+        {!props.noFlight && (
+          <div
+            class={`absolute -bottom-[9px] left-1/2 -translate-x-1/2
+                    w-[18px] h-[18px] rounded-full
+                    border-[1.5px] ${cfg().badge}
+                    bg-cream flex items-center justify-center
+                    transition-colors duration-300`}
+          >
+            <StatusIcon status={props.status} />
+          </div>
+        )}
       </div>
 
       {/* Name */}
@@ -145,6 +155,7 @@ export function CrewStatusBar() {
               <AvatarBadge
                 member={member}
                 status={statuses[member.id]}
+                noFlight={noFlightIds.has(member.id)}
                 onClick={() => cycle(member)}
               />
             }</For>
