@@ -46,6 +46,25 @@ body {
     0 3px 10px rgba(69, 67, 70, 0.07);
 }
 
+/* ─── Paper surface (header, drawer) ─────────────────────────────────────────
+   Fixed/absolute elements can't inherit body's background-image, so they need
+   the texture applied explicitly. paper-surface replicates body treatment;
+   paper-panel uses the slightly lighter card tone for drawer panels.
+   ─────────────────────────────────────────────────────────────────────────── */
+@utility paper-surface {
+  background-color: var(--color-cream);
+  background-image: var(--paper-noise);
+  background-repeat: repeat;
+  background-blend-mode: soft-light;
+}
+
+@utility paper-panel {
+  background-color: #fbf9e0;
+  background-image: var(--paper-noise);
+  background-repeat: repeat;
+  background-blend-mode: soft-light;
+}
+
 /* ─── Ripple animation ────────────────────────────────────────────────────────
    Expands outward and fades — never bounces back. Fades fully by 75% so the
    instant reset at 100% is invisible. Two rings staggered by 1s give the
