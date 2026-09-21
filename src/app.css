@@ -88,6 +88,10 @@ body {
   animation: ripple 2s ease-out infinite;
 }
 
+dialog {
+  margin: auto;
+}
+
 dialog::backdrop {
   background: rgba(69, 67, 70, 0.5);
   backdrop-filter: blur(4px);
