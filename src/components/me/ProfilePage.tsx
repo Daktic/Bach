@@ -1,13 +1,15 @@
 import { createSignal, onMount, Show } from "solid-js";
 import { mockFlights } from "~/lib/data/flights";
 import { formatTime } from "~/lib/flights";
+import { lookupFlight } from "~/lib/api/aviationstack";
 import type { GuestFlight } from "~/lib/types";
 
 // Will be replaced with session.user.id once auth is wired
 const CURRENT_USER_ID = "gberg";
-const PROFILE_KEY = "bach:profile";
-const FLIGHT_KEY  = "bach:my_flight_id";
-const TRIP_DATE   = "2027-04-08";
+const PROFILE_KEY  = "bach:profile";
+const FLIGHTS_KEY  = "bach:flights_v2";
+const TRIP_DATE    = "2027-04-08";
+const RETURN_DATE  = "2027-04-12";
 
 // ─── Shared field style ───────────────────────────────────────────────────────
 
@@ -116,6 +118,31 @@ function AvatarUpload(props: {
   );
 }
 
+// ─── Saved leg row ────────────────────────────────────────────────────────────
+
+function SavedLegRow(props: { label: string; flight: GuestFlight }) {
+  const f = props.flight;
+  return (
+    <div class="space-y-2">
+      <p class="text-[9px] font-bold uppercase tracking-wider text-charcoal/35">{props.label}</p>
+      <div class="flex items-center gap-3">
+        <div class="text-center">
+          <p class="text-lg font-black text-charcoal">{f.origin}</p>
+          <p class="text-[10px] text-charcoal/40">{formatTime(f.departsAt)}</p>
+        </div>
+        <div class="flex-1 flex flex-col items-center gap-0.5">
+          <PlaneIcon />
+          <p class="text-[10px] font-bold text-charcoal/40">{f.airline} · {f.flightNumber}</p>
+        </div>
+        <div class="text-center">
+          <p class="text-lg font-black text-charcoal">{f.destination}</p>
+          <p class="text-[10px] text-charcoal/40">{formatTime(f.arrivesAt)}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Found-flight mini card ───────────────────────────────────────────────────
 
 function FlightFoundCard(props: {
@@ -125,118 +152,174 @@ function FlightFoundCard(props: {
 }) {
   const f = props.flight;
   return (
-    <div class="rounded-xl border-2 border-teal/40 bg-teal/5 overflow-hidden">
-      <div class="px-4 pt-3 pb-2 border-b border-teal/15">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">
-              {f.airline}
-            </p>
-            <p class="text-base font-black text-charcoal leading-tight">{f.flightNumber}</p>
-          </div>
-          <span class="text-xs font-bold text-teal bg-teal/10 px-2 py-1 rounded-lg">Found</span>
+    <div class="rounded-xl border-2 border-teal/40 bg-teal/5 p-3 space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">{f.airline}</p>
+          <p class="text-sm font-black text-charcoal">{f.flightNumber}</p>
+        </div>
+        <span class="text-xs font-bold text-teal bg-teal/10 px-2 py-1 rounded-lg">Found</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="text-center">
+          <p class="text-lg font-black text-charcoal">{f.origin}</p>
+          <p class="text-xs text-charcoal/50">{formatTime(f.departsAt)}</p>
+        </div>
+        <PlaneIcon />
+        <div class="text-center">
+          <p class="text-lg font-black text-charcoal">{f.destination}</p>
+          <p class="text-xs text-charcoal/50">{formatTime(f.arrivesAt)}</p>
         </div>
       </div>
-      <div class="px-4 py-3">
-        <div class="flex items-center justify-between gap-2">
-          <div class="text-center">
-            <p class="text-xl font-black text-charcoal">{f.origin}</p>
-            <p class="text-xs text-charcoal/50 mt-0.5">{formatTime(f.departsAt)}</p>
-          </div>
-          <PlaneIcon />
-          <div class="text-center">
-            <p class="text-xl font-black text-charcoal">{f.destination}</p>
-            <p class="text-xs text-charcoal/50 mt-0.5">{formatTime(f.arrivesAt)}</p>
-          </div>
-        </div>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          onClick={props.onUse}
+          class="flex-1 rounded-xl bg-teal px-3 py-2 text-xs font-bold text-charcoal
+                 hover:bg-teal/85 active:scale-[0.98] transition-all"
+        >
+          Use this flight
+        </button>
+        <button
+          type="button"
+          onClick={props.onClear}
+          class="rounded-xl border border-charcoal/15 px-3 py-2 text-xs font-semibold
+                 text-charcoal/50 hover:text-charcoal transition-colors"
+        >
+          Try again
+        </button>
+      </div>
+    </div>
+  );
+}
 
-        <div class="flex gap-2 mt-3">
-          <button
-            type="button"
-            onClick={props.onUse}
-            class="flex-1 rounded-xl bg-teal px-3 py-2 text-xs font-bold text-charcoal
-                   hover:bg-teal/85 active:scale-[0.98] transition-all"
-          >
-            Use this flight
-          </button>
-          <button
-            type="button"
-            onClick={props.onClear}
-            class="rounded-xl border border-charcoal/15 px-3 py-2 text-xs font-semibold
-                   text-charcoal/50 hover:text-charcoal transition-colors"
-          >
-            Try again
-          </button>
-        </div>
+// ─── Flight lookup row ────────────────────────────────────────────────────────
+
+type LookupState = "idle" | "loading" | "found" | "not_found";
+
+function FlightLookupRow(props: {
+  label: string;
+  defaultDate: string;
+  onFound: (f: GuestFlight) => void;
+}) {
+  const [input,     setInput    ] = createSignal("");
+  const [flightDate, setFlightDate] = createSignal(props.defaultDate);
+  const [state,     setState    ] = createSignal<LookupState>("idle");
+  const [found,     setFound    ] = createSignal<GuestFlight | null>(null);
+
+  function doLookup() {
+    const raw = input().trim();
+    if (!raw) return;
+    setState("loading");
+    setFound(null);
+
+    // Normalize input: remove spaces, uppercase
+    lookupFlight(raw, flightDate()).then(result => {
+      if (result) {
+        setFound({
+          id:          result.flightNumber,
+          guestId:     "",
+          guestName:   "",
+          flightNumber: result.flightNumber,
+          airline:     result.airline,
+          origin:      result.origin,
+          destination: result.destination,
+          departsAt:   result.departsAt,
+          arrivesAt:   result.arrivesAt,
+        });
+        setState("found");
+      } else {
+        setState("not_found");
+      }
+    }).catch(() => setState("not_found"));
+  }
+
+  return (
+    <div class="space-y-2">
+      <p class="text-[10px] font-bold uppercase tracking-wider text-charcoal/35">
+        {props.label}
+      </p>
+
+      <div class="grid grid-cols-[5.5rem_1fr_auto] gap-2 items-center">
+        <input
+          type="text"
+          placeholder="AA 321"
+          value={input()}
+          onInput={(e) => { setInput(e.currentTarget.value); setState("idle"); }}
+          onKeyDown={(e) => e.key === "Enter" && doLookup()}
+          class={fieldCls}
+          spellcheck={false}
+          autocomplete="off"
+        />
+        <input
+          type="date"
+          value={flightDate()}
+          onChange={(e) => setFlightDate(e.currentTarget.value)}
+          class={fieldCls}
+        />
+        <button
+          type="button"
+          onClick={doLookup}
+          disabled={state() === "loading" || !input().trim()}
+          class="rounded-xl bg-charcoal px-4 py-2.5 text-xs font-bold text-cream
+                 disabled:opacity-40 hover:bg-charcoal/85 active:scale-[0.98] transition-all
+                 whitespace-nowrap"
+        >
+          {state() === "loading" ? "…" : "Look up"}
+        </button>
       </div>
+
+      <Show when={state() === "found" && found()} keyed>
+        {(flight) => (
+          <FlightFoundCard
+            flight={flight}
+            onUse={() => { props.onFound(flight); setState("idle"); setInput(""); }}
+            onClear={() => { setState("idle"); setInput(""); }}
+          />
+        )}
+      </Show>
+
+      <Show when={state() === "not_found"}>
+        <p class="text-xs font-semibold text-orange py-0.5">
+          No flight found — double-check the number and date.
+        </p>
+      </Show>
     </div>
   );
 }
 
 // ─── Flight section ───────────────────────────────────────────────────────────
 
-type LookupState = "idle" | "loading" | "found" | "not_found";
-
 function FlightSection() {
-  const defaultFlight = mockFlights.find(f => f.guestId === CURRENT_USER_ID) ?? null;
+  const defaultInbound = mockFlights.find(f => f.guestId === CURRENT_USER_ID) ?? null;
 
-  const [savedFlightId, setSavedFlightId] = createSignal<string | null>(
-    defaultFlight?.id ?? null
-  );
-  const [editing, setEditing] = createSignal(!defaultFlight);
-  const [flightInput, setFlightInput] = createSignal("");
-  const [flightDate, setFlightDate] = createSignal(TRIP_DATE);
-  const [lookupState, setLookupState] = createSignal<LookupState>("idle");
-  const [foundFlight, setFoundFlight] = createSignal<GuestFlight | null>(null);
+  const [savedInbound,  setSavedInbound ] = createSignal<GuestFlight | null>(defaultInbound);
+  const [savedOutbound, setSavedOutbound] = createSignal<GuestFlight | null>(null);
+  const [editing, setEditing] = createSignal(!defaultInbound);
 
   onMount(() => {
-    const stored = localStorage.getItem(FLIGHT_KEY);
-    if (stored) setSavedFlightId(stored);
+    const raw = localStorage.getItem(FLIGHTS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.inbound)  setSavedInbound(parsed.inbound);
+      if (parsed.outbound) setSavedOutbound(parsed.outbound);
+      setEditing(!parsed.inbound && !parsed.outbound);
+    }
   });
 
-  const currentFlight = () =>
-    mockFlights.find(f => f.id === savedFlightId()) ?? null;
-
-  function doLookup() {
-    const input = flightInput().trim();
-    if (!input) return;
-    setLookupState("loading");
-    setFoundFlight(null);
-
-    // Normalize: "AA321" or "AA 321" → "AA321"
-    const normalized = input.replace(/\s+/g, "").toUpperCase();
-
-    // TODO: replace setTimeout with AeroDataBox API call via server function
-    // e.g. lookupFlight(normalized, flightDate())
-    setTimeout(() => {
-      const match = mockFlights.find(
-        f => f.flightNumber.replace(/\s+/g, "").toUpperCase() === normalized
-      );
-      if (match) {
-        setFoundFlight(match);
-        setLookupState("found");
-      } else {
-        setLookupState("not_found");
-      }
-    }, 700);
+  function saveToStorage(inbound: GuestFlight | null, outbound: GuestFlight | null) {
+    localStorage.setItem(FLIGHTS_KEY, JSON.stringify({ inbound, outbound }));
   }
 
-  function useFlight(flight: GuestFlight) {
-    setSavedFlightId(flight.id);
-    localStorage.setItem(FLIGHT_KEY, flight.id);
-    setEditing(false);
-    setFoundFlight(null);
-    setLookupState("idle");
-    setFlightInput("");
-  }
+  const hasSaved = () => savedInbound() || savedOutbound();
 
   return (
     <div class="paper-card rounded-xl p-4 space-y-4">
       <div class="flex items-center justify-between">
         <p class="text-xs font-semibold uppercase tracking-widest text-charcoal/40">
-          My flight
+          My flights
         </p>
-        <Show when={currentFlight() && !editing()}>
+        <Show when={hasSaved() && !editing()}>
           <button
             type="button"
             onClick={() => setEditing(true)}
@@ -247,93 +330,52 @@ function FlightSection() {
         </Show>
       </div>
 
-      {/* Current saved flight summary */}
-      <Show when={!editing() ? currentFlight() : null} keyed>
-        {(f) => (
-          <div class="flex items-center gap-3">
-            <div class="text-center">
-              <p class="text-lg font-black text-charcoal">{f.origin}</p>
-              <p class="text-[10px] text-charcoal/40">{formatTime(f.departsAt)}</p>
-            </div>
-            <div class="flex-1 flex flex-col items-center gap-0.5">
-              <PlaneIcon />
-              <p class="text-[10px] font-bold text-charcoal/40">
-                {f.airline} · {f.flightNumber}
-              </p>
-            </div>
-            <div class="text-center">
-              <p class="text-lg font-black text-charcoal">{f.destination}</p>
-              <p class="text-[10px] text-charcoal/40">{formatTime(f.arrivesAt)}</p>
-            </div>
-          </div>
-        )}
+      {/* Saved summary */}
+      <Show when={!editing() && hasSaved()}>
+        <div class="space-y-3">
+          <Show when={savedInbound()}>
+            {(f) => <SavedLegRow label="Flying in" flight={f()} />}
+          </Show>
+          <Show when={savedInbound() && savedOutbound()}>
+            <div class="w-full h-px bg-charcoal/8" />
+          </Show>
+          <Show when={savedOutbound()}>
+            {(f) => <SavedLegRow label="Flying home" flight={f()} />}
+          </Show>
+        </div>
       </Show>
 
       {/* Lookup form */}
       <Show when={editing()}>
-        <div class="space-y-3">
-          <p class="text-xs text-charcoal/50 leading-relaxed">
-            Enter your flight number from your confirmation email.
-            We'll fill in the rest — full conf number lookup coming soon.
-          </p>
+        <div class="space-y-4">
+          <FlightLookupRow
+            label="Flying in"
+            defaultDate={TRIP_DATE}
+            onFound={(f) => {
+              setSavedInbound(f);
+              saveToStorage(f, savedOutbound());
+            }}
+          />
 
-          <div class="flex gap-2">
-            <input
-              type="text"
-              placeholder="AA 321"
-              value={flightInput()}
-              onInput={(e) => {
-                setFlightInput(e.currentTarget.value);
-                setLookupState("idle");
-              }}
-              onKeyDown={(e) => e.key === "Enter" && doLookup()}
-              class={`flex-1 ${fieldCls}`}
-              spellcheck={false}
-              autocomplete="off"
-            />
-            <input
-              type="date"
-              value={flightDate()}
-              onChange={(e) => setFlightDate(e.currentTarget.value)}
-              class={`w-36 ${fieldCls}`}
-            />
-          </div>
+          <div class="w-full h-px bg-charcoal/8" />
 
-          <button
-            type="button"
-            onClick={doLookup}
-            disabled={lookupState() === "loading" || !flightInput().trim()}
-            class="w-full rounded-xl bg-charcoal px-4 py-2.5 text-sm font-bold text-cream
-                   disabled:opacity-40 hover:bg-charcoal/85
-                   active:scale-[0.98] transition-all"
-          >
-            {lookupState() === "loading" ? "Looking up…" : "Look up flight"}
-          </button>
+          <FlightLookupRow
+            label="Flying home"
+            defaultDate={RETURN_DATE}
+            onFound={(f) => {
+              setSavedOutbound(f);
+              saveToStorage(savedInbound(), f);
+            }}
+          />
 
-          <Show when={lookupState() === "found" && foundFlight()} keyed>
-            {(flight) => (
-              <FlightFoundCard
-                flight={flight}
-                onUse={() => useFlight(flight)}
-                onClear={() => { setLookupState("idle"); setFlightInput(""); }}
-              />
-            )}
-          </Show>
-
-          <Show when={lookupState() === "not_found"}>
-            <p class="text-xs font-semibold text-orange text-center py-1">
-              No flight found — double-check the number and date.
-            </p>
-          </Show>
-
-          <Show when={currentFlight()}>
+          <Show when={hasSaved()}>
             <button
               type="button"
-              onClick={() => { setEditing(false); setLookupState("idle"); }}
+              onClick={() => setEditing(false)}
               class="w-full text-xs font-semibold text-charcoal/40 hover:text-charcoal
                      transition-colors py-1"
             >
-              Cancel
+              Done
             </button>
           </Show>
         </div>
@@ -422,7 +464,9 @@ function ProfileForm() {
       </div>
 
       {/* Flight */}
-      <FlightSection />
+      <div id="flight-section">
+        <FlightSection />
+      </div>
 
       {/* Save */}
       <button

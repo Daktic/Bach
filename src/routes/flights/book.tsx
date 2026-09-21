@@ -1,21 +1,24 @@
-// Fly-in destination: Phoenix Sky Harbor (PHX) — ~15 min from Scottsdale
-// Trip window: arrive Apr 7–8, depart Apr 12–13
+import { clientOnly } from "@solidjs/start";
 
-const DESTINATION = "PHX";
-const ARRIVE_DATE = "2027-04-08";
-const DEPART_DATE = "2027-04-12";
+const FlightSearch = clientOnly(() =>
+  import("~/components/flights/FlightSearch").then(m => ({ default: m.FlightSearch }))
+);
+
+const DESTINATION  = "PHX";
+const ARRIVE_DATE  = "2027-04-08";
+const DEPART_DATE  = "2027-04-12";
 
 const BOOKING_LINKS = [
   {
     label: "Google Flights",
-    description: "Fastest way to compare prices across all airlines",
+    description: "Compare prices across all airlines",
     href: `https://www.google.com/travel/flights#flt=.${DESTINATION}.${ARRIVE_DATE}*${DESTINATION}..${DEPART_DATE}`,
     icon: "G",
     accent: "bg-white border border-charcoal/15 text-charcoal",
   },
   {
     label: "Kayak",
-    description: "Set a price alert and get notified when fares drop",
+    description: "Set a price alert — get notified when fares drop",
     href: `https://www.kayak.com/flights/ANY-${DESTINATION}/${ARRIVE_DATE}`,
     icon: "K",
     accent: "bg-[#FF690F] text-white",
@@ -28,6 +31,14 @@ const BOOKING_LINKS = [
     accent: "bg-[#00355F] text-white",
   },
 ];
+
+function ExternalIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5 text-charcoal/30 shrink-0">
+      <path d="M10 6v2H5v11h11v-5h2v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6zm11-3v8l-3.528-3.536-5.656 5.658-1.415-1.415 5.657-5.657L13 3h8z" />
+    </svg>
+  );
+}
 
 function InfoRow(props: { label: string; value: string }) {
   return (
@@ -45,7 +56,10 @@ export default function BookFlightPage() {
     <div class="mx-auto max-w-lg px-4 py-6 space-y-6">
 
       {/* Back */}
-      <a href="/flights" class="inline-flex items-center gap-1.5 text-xs font-semibold text-charcoal/50 hover:text-charcoal transition-colors">
+      <a
+        href="/flights"
+        class="inline-flex items-center gap-1.5 text-xs font-semibold text-charcoal/50 hover:text-charcoal transition-colors"
+      >
         <svg viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5">
           <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
         </svg>
@@ -63,24 +77,26 @@ export default function BookFlightPage() {
         <p class="text-base font-semibold text-teal mt-0.5">PHX · Scottsdale, AZ</p>
       </div>
 
+      {/* Live flight search */}
+      <FlightSearch />
+
       {/* Trip info */}
       <div class="paper-card rounded-xl px-4 py-1">
-        <InfoRow label="Fly in"  value="Apr 7 – 8, 2027" />
-        <InfoRow label="Fly out" value="Apr 12 – 13, 2027" />
-        <InfoRow label="Airport" value="Phoenix Sky Harbor (PHX)" />
-        <InfoRow label="Distance to venue" value="~15 min drive" />
+        <InfoRow label="Fly in"            value="Apr 7 – 8, 2027" />
+        <InfoRow label="Fly out"           value="Apr 12 – 13, 2027" />
+        <InfoRow label="Airport"           value="Phoenix Sky Harbor (PHX)" />
+        <InfoRow label="Drive to venue"    value="~15 min" />
       </div>
 
-      {/* Heads up */}
+      {/* PHX heads up */}
       <div class="rounded-xl bg-teal/10 border border-teal/25 px-4 py-3">
         <p class="text-xs font-semibold text-charcoal/70">
-          Fly into <span class="text-teal font-bold">PHX</span> — it's the closest major airport
-          to Scottsdale and has non-stops from most US cities.
-          Avoid Tucson (TUS) and Flagstaff (FLG) — both are 90+ min away.
+          Fly into <span class="text-teal font-bold">PHX</span> — non-stops from most US cities,
+          15 min to the house. Avoid Tucson (TUS) and Flagstaff (FLG) — both are 90+ min away.
         </p>
       </div>
 
-      {/* Booking links */}
+      {/* Search links */}
       <section>
         <p class="text-xs font-semibold uppercase tracking-widest text-charcoal/40 mb-3">
           Search flights
@@ -100,18 +116,20 @@ export default function BookFlightPage() {
                 <p class="text-sm font-bold text-charcoal">{link.label}</p>
                 <p class="text-xs text-charcoal/50 mt-0.5">{link.description}</p>
               </div>
-              <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 text-charcoal/25 shrink-0">
-                <path d="M10 6v2H5v11h11v-5h2v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6zm11-3v8l-3.528-3.536-5.656 5.658-1.415-1.415 5.657-5.657L13 3h8z" />
-              </svg>
+              <ExternalIcon />
             </a>
           ))}
         </div>
       </section>
 
-      {/* Once booked */}
+      {/* Once booked reminder */}
       <div class="rounded-xl bg-orange/10 border border-orange/20 px-4 py-3">
         <p class="text-xs font-semibold text-charcoal/70">
-          Once you book, add your flight number in the tracker so the crew knows when you land.
+          Once you book, add your flight number on your{" "}
+          <a href="/me#flight-section" class="text-orange underline underline-offset-2">
+            profile page
+          </a>{" "}
+          so the crew knows when you land.
         </p>
       </div>
 

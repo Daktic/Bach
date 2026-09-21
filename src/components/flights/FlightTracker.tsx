@@ -7,7 +7,7 @@ import { MyFlightCard } from "./MyFlightCard";
 import { NoFlightCard } from "./NoFlightCard";
 
 // Replaced with session.user.id once auth is wired up
-const CURRENT_USER_ID = "gberg";
+const CURRENT_USER_ID = "tom";
 
 function SectionLabel(props: { label: string }) {
   return (

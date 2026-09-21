@@ -81,20 +81,23 @@ function FlightRoute(props: { flight: GuestFlightWithStatus }) {
 
 function NoFlight() {
   return (
-    <div class="flex flex-col items-center justify-center gap-4 py-8 px-4 text-center">
-      <PlaneIcon class="w-8 h-8 text-charcoal/20" />
-      <div>
-        <p class="text-sm font-semibold text-charcoal/50">No flight added yet</p>
-        <p class="text-xs text-charcoal/35 mt-0.5">
-          Don't miss out — seats fill fast
-        </p>
+    <div class="flex flex-col items-center justify-center gap-5 py-10 px-6 text-center min-h-[172px]">
+      <div class="space-y-1">
+        <p class="text-sm font-bold text-charcoal/50">No flight details provided</p>
+        <a
+          href="/me#flight-section"
+          class="text-xs text-charcoal/35 hover:text-teal transition-colors underline underline-offset-2"
+        >
+          Have a flight number?
+        </a>
       </div>
+
       <a
         href="/flights/book"
-        class="rounded-xl bg-orange px-5 py-2.5 text-sm font-bold text-cream
+        class="rounded-xl bg-orange px-6 py-2.5 text-sm font-bold text-cream
                hover:bg-orange/90 active:scale-[0.97] transition-all"
       >
-        Book a flight →
+        Book Now
       </a>
     </div>
   );
