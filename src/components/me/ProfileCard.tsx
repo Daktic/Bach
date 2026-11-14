@@ -1,13 +1,12 @@
 import { createEffect, createSignal, on, onCleanup, Show } from "solid-js";
-import { loadMyProfile, saveMyProfile, type MyProfile } from "~/lib/client/my-profile";
+import { loadMyProfile, onMyProfileChange, saveMyProfile, type MyProfile } from "~/lib/client/my-profile";
 import type { Me } from "~/lib/types";
 import { downscaleAvatar } from "./avatar-image";
 import { CameraIcon, CheckIcon, ErrorNote, fieldCls, labelCls, primaryBtn, quietBtn } from "./ui";
 
 const NAME_MAX = 40;
-const STORAGE_ERROR = "Couldn't save on this device. Storage may be full or turned off (private browsing).";
 
-/** ME-1/ME-2: who's signed in, plus a display name and photo saved on this device. */
+/** ME-1/ME-2: who's signed in, plus a display name and photo the crew sees too. */
 export function ProfileCard(props: { me: Me }) {
   const [profile, setProfile] = createSignal<MyProfile>(loadMyProfile(props.me.id));
   const displayName = () => profile().name ?? props.me.name;
@@ -22,16 +21,19 @@ export function ProfileCard(props: { me: Me }) {
   let noticeTimer: ReturnType<typeof setTimeout> | undefined;
   onCleanup(() => clearTimeout(noticeTimer));
 
-  // Another guest signed in on this device: show their overrides, not ours.
+  // Load this guest's saved profile (and again if a different guest signs in).
   createEffect(
     on(
       () => props.me.id,
       (id) => {
-        const next = loadMyProfile(id);
-        setProfile(next);
-        setNameDraft(next.name ?? props.me.name);
+        const apply = () => {
+          const next = loadMyProfile(id);
+          setProfile(next);
+          setNameDraft(next.name ?? props.me.name);
+        };
+        apply();
+        onCleanup(onMyProfileChange(id, apply));
       },
-      { defer: true },
     ),
   );
 
@@ -51,9 +53,10 @@ export function ProfileCard(props: { me: Me }) {
     noticeTimer = setTimeout(() => setNotice(null), 2500);
   }
 
-  function persist(next: MyProfile, message: string): boolean {
-    if (!saveMyProfile(props.me.id, next)) {
-      setError(STORAGE_ERROR);
+  async function persist(next: MyProfile, message: string): Promise<boolean> {
+    const failure = await saveMyProfile(props.me.id, next);
+    if (failure) {
+      setError(failure);
       return false;
     }
     setProfile(next);
@@ -67,11 +70,11 @@ export function ProfileCard(props: { me: Me }) {
     if (!nameChanged()) return;
     const clean = cleanDraft();
     const name = clean && clean !== props.me.name ? clean : undefined;
-    if (persist({ ...profile(), name }, "Name saved.")) setNameDraft(name ?? props.me.name);
+    void persist({ ...profile(), name }, "Name saved.").then((ok) => ok && setNameDraft(name ?? props.me.name));
   }
 
   function removePhoto() {
-    persist({ ...profile(), avatarDataUrl: undefined }, "Photo removed.");
+    void persist({ ...profile(), avatarDataUrl: undefined }, "Photo removed.");
     photoButton?.focus(); // the Remove button is gone now
   }
 
@@ -87,7 +90,7 @@ export function ProfileCard(props: { me: Me }) {
     setPhotoBusy(true);
     try {
       const avatarDataUrl = await downscaleAvatar(file);
-      persist({ ...profile(), avatarDataUrl }, "Photo saved.");
+      await persist({ ...profile(), avatarDataUrl }, "Photo saved.");
     } catch {
       setError("Couldn't read that photo. Try a JPG or PNG.");
     } finally {
@@ -199,7 +202,7 @@ export function ProfileCard(props: { me: Me }) {
           </button>
         </div>
         <p id="display-name-hint" class="text-xs text-charcoal/75">
-          <Show when={profile().name} fallback="How your name shows on this device.">
+          <Show when={profile().name} fallback="How your name shows to the crew.">
             Clear it to go back to “{props.me.name}”.
           </Show>
         </p>
@@ -218,7 +221,7 @@ export function ProfileCard(props: { me: Me }) {
       </Show>
       <Show when={error()}>{(message) => <ErrorNote>{message()}</ErrorNote>}</Show>
 
-      <p class="text-xs text-charcoal/75">Your name and photo are saved on this device for now.</p>
+      <p class="text-xs text-charcoal/75">The crew sees your name and photo too.</p>
     </section>
   );
 }

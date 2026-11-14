@@ -106,14 +106,14 @@ Guests see who has booked, who's in the air, and who's landed. Guests without a 
 | ID | Requirement | Pri | State |
 |----|-------------|-----|-------|
 | FL-1 | A guest can enter their inbound (and optional outbound) flight by flight number + date, with auto-filled details from a lookup | P0 | 🟡 lookup plus manual entry; saved on the guest's own device until FL-2. The lookup can't see future flights yet (§10 Q1) |
-| FL-2 | Flights are stored server-side so every guest sees everyone's flights | P0 | ⬜ needs Turso (ADR 0007) |
+| FL-2 | Flights are stored server-side so every guest sees everyone's flights | P0 | ✅ stored in Turso (ADR 0007) |
 | FL-3 | `/flights` lists every guest's inbound flight, sorted: in the air, boarding, upcoming, landed | P0 | 🟡 works on mock flights plus the viewer's own entry |
 | FL-4 | Flight status reflects reality on travel day (delays, actual landing), falling back to schedule-based status if the API fails | P1 | 🟡 schedule-based only; provider undecided (§10 Q1) |
-| FL-5 | Guests with no flight are listed separately with a "book a flight" call to action | P0 | ✅ on mock data until FL-2 |
+| FL-5 | Guests with no flight are listed separately with a "book a flight" call to action | P0 | ✅ |
 | FL-6 | `/flights/book` searches live fares from the guest's nearest airport to PHX for the trip dates and links out to book | P1 | ✅ SerpAPI, cached, per-guest hourly limit, sign-in required |
 | FL-7 | "Who's here" bar shows each guest's travel status (home / driving / flying / arrived) | P1 | 🟡 mock statuses |
-| FL-8 | A guest can only change their *own* travel status; status syncs to other guests without a full reload | P1 | 🟡 own status only ✅; syncing needs server storage |
-| FL-9 | Guests who drive instead of fly can say so and are not shown as "no flight" | P2 | 🟡 drivers the organiser seeds show for everyone; a guest's own toggle stays on their device until FL-2 |
+| FL-8 | A guest can only change their *own* travel status; status syncs to other guests without a full reload | P1 | ✅ stored in Turso; others' statuses refresh every 30 s and when the page comes back into view |
+| FL-9 | Guests who drive instead of fly can say so and are not shown as "no flight" | P2 | ✅ |
 
 **Acceptance:** guest A enters a flight on their phone; guest B refreshes `/flights` on another phone and sees it. Tapping guest B's avatar as guest A does nothing.
 
@@ -122,7 +122,7 @@ Guests see who has booked, who's in the air, and who's landed. Guests without a 
 | ID | Requirement | Pri | State |
 |----|-------------|-----|-------|
 | ME-1 | Shows the signed-in guest's name and avatar (defaulting to the OAuth photo) | P0 | ✅ |
-| ME-2 | Guest can edit display name and upload a photo | P1 | 🟡 saved on the guest's own device only |
+| ME-2 | Guest can edit display name and upload a photo | P1 | ✅ stored in Turso; the crew sees the name and photo |
 | ME-3 | Guest manages their own flights here (see FL-1) | P0 | ✅ (device-only until FL-2) |
 | ME-4 | Optional fields useful to the organiser: phone number, dietary needs, shirt size | P2 | ⬜ only useful once it's stored server-side |
 
@@ -196,7 +196,7 @@ contributions  id, pool_id, guest_id, amount, stripe_session_id (unique), paid_a
 
 `currentAmount` and "my contribution" become derived values from `contributions`, not stored fields. The unique `stripe_session_id` makes webhook handling idempotent.
 
-**Until Turso is set up:** `guests` lives in `src/lib/data/guests.ts`. `guest_emails` is the `GUEST_EMAILS` environment variable, because the repo is public ([ADR 0009](../adr/0009-invite-only-auth-with-env-guest-list.md)). `pools` and `pool_shares` live in `src/lib/data/funds.ts`. `flights`, `travel_status` and `contributions` are mock seed data, and each guest's own entries stay in their browser. The pages read all of it through the server functions in `src/lib/api/`, so swapping in the database only touches that layer and the data files.
+**Where data lives now:** `guests` lives in `src/lib/data/guests.ts`. `guest_emails` is the `GUEST_EMAILS` environment variable, because the repo is public ([ADR 0009](../adr/0009-invite-only-auth-with-env-guest-list.md)). `pools` and `pool_shares` live in `src/lib/data/funds.ts`. Flights, travel statuses and profile edits are in Turso (`src/lib/server/schema.ts`). Contributions are read from Stripe (ADR 0010). The pages read all of it through the server functions in `src/lib/api/`, so swapping in the database only touches that layer and the data files.
 
 ---
 
@@ -212,7 +212,7 @@ Dates work back from the trip. Adjust as plans firm up.
 | **M4 — Travel-day polish** | Mar 2027 | FL-4, FL-7–8, TL-4, FN-8–9, AUTH-5, FL-9, final itinerary content (TL-8) |
 | **Trip** | Apr 8–12, 2027 | Freeze. Bug fixes only. |
 
-**Status (2026-11-14):** everything that doesn't need outside setup is built and has been through a security, time-zone and accessibility review: M1 apart from Turso, the M2 flows on mock data, M3 including Stripe payments (test mode), and most of M4. What's left is setup (§12) plus FL-2, FL-4, FN-7 storage and ME-4.
+**Status (2026-11-14):** everything that doesn't need outside setup is built and has been through a security, time-zone and accessibility review: M1, the M2 flows with flights, statuses and profiles stored in Turso, M3 including Stripe payments (test mode), and most of M4. What's left is setup (§12) plus FL-4, FN-7 storage and ME-4.
 
 **Booking deadline for guests:** TBD (suggest ~8 weeks out, mid-Feb 2027).
 
@@ -250,7 +250,7 @@ Still open:
 1. `.env.local`: set `AUTH_SECRET` (currently empty) and `GUEST_EMAILS` (see `.env.example`). Without them, nobody can sign in, including you.
 2. Google and Apple OAuth: add `<site>/api/auth/callback/google` and `<site>/api/auth/callback/apple` as redirect URIs.
 3. Hosting: the same variables in the production environment.
-4. Turso (ADR 0007), for FL-2, FL-8 sync, ME-2/ME-4 persistence and payment records.
+4. Turso (ADR 0007): done for flights, statuses and profiles. On the host, set `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`.
 5. Stripe: done in the Bach sandbox (test mode). For production: activate the account, create a live restricted key (`rk_live_…`, Checkout Sessions write), add a webhook endpoint at `https://<site>/api/stripe/webhook` for the four `checkout.session.*` events, and set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` on the host.
 6. Real content: itinerary (TL-8), pools, shares, due dates and the groom's $0 override (FN-9). Decide first where it lives, since the repo is public (§10 Q8).
 7. A flight-data plan that covers future flights, for the FL-1 lookup and FL-4 live status (§10 Q1). Until then, guests enter flights by hand.

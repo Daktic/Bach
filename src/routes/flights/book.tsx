@@ -146,12 +146,10 @@ export default function BookFlightPage() {
         </div>
       </section>
 
-      {/* Once booked reminder. Flights saved on /me stay on that phone until
-          they sync (FL-2), so don't promise the crew will see them yet. */}
+      {/* Once booked reminder: flights saved on /me show on the crew's tracker. */}
       <div class="rounded-xl bg-orange/10 border border-orange/20 px-4 pt-3 pb-1">
         <p class="text-xs font-semibold text-charcoal/80">
-          Once you book, add your flight on your profile. For now it's saved on your phone only,
-          so text the organiser your flight number too.
+          Once you book, add your flight on your profile so the crew can see when you land.
         </p>
         <a
           href="/me#flight-section"

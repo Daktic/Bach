@@ -91,13 +91,14 @@ Copy [`.env.example`](.env.example) to `.env.local`. This repo is public, so rea
 | `AVIATIONSTACK_API_KEY` | Flight-number lookup on `/me`. Its `/flights` endpoint only sees today's and past flights, so lookups months ahead come back empty. Manual entry works without it. |
 | `STRIPE_SECRET_KEY` | Card payments on `/funds` (Stripe Checkout, [ADR 0010](docs/adr/0010-stripe-checkout-with-stripe-as-payment-record.md)). Use a test key in dev; prefer a restricted key. Without it, Pay is disabled and payments are mock. |
 | `STRIPE_WEBHOOK_SECRET` | Verifies `/api/stripe/webhook`. In dev, run `stripe listen --forward-to localhost:5173/api/stripe/webhook` and use the `whsec_…` it prints. |
+| `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` | Shared flights, "Who's here" statuses and profile edits ([ADR 0007](docs/adr/0007-turso-sqlite-storage.md)). Without them the app uses a local SQLite file at `.data/bach.db`. After changing `src/lib/server/schema.ts`, run `pnpm db:generate`, then `pnpm db:migrate` to apply it. |
 
 In dev, `?mockDate=2027-04-10` or `?mockDate=2027-04-08T14:00` (read as Arizona time) shows any page as it will look on that day.
 
 ### Checks
 
 ```bash
-pnpm test        # unit tests (Vitest): time zones, invite list, flights, funds
+pnpm test        # unit tests (Vitest): time zones, invite list, flights, funds, database store
 pnpm typecheck   # TypeScript
 ```
 

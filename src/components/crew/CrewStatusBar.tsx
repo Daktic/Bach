@@ -4,16 +4,16 @@ import { createStore } from "solid-js/store";
 import { hasNoArrivalPlan, nextTravelStatus } from "~/components/flights/flight-board";
 import { CarIcon, CheckIcon, HomeIcon, PlaneIcon } from "~/components/flights/icons";
 import { getCrew } from "~/lib/api/crew";
-import { loadMyProfile } from "~/lib/client/my-profile";
+import { loadMyProfile, onMyProfileChange } from "~/lib/client/my-profile";
 import { EMPTY_TRAVEL, loadMyTravel, onMyTravelChange, type MyTravel } from "~/lib/client/my-travel";
 import { meQuery } from "~/lib/queries";
-import { MockTransport } from "~/lib/status/mock-transport";
+import { ServerTransport } from "~/lib/status/server-transport";
 import type { StatusTransport } from "~/lib/status/types";
 import type { CrewMemberView, TravelStatus } from "~/lib/types";
 
-// One bus per page load; this module only runs in the browser (clientOnly).
-// Swap MockTransport for a server-backed transport to sync statuses (FL-8).
-const transport: StatusTransport = new MockTransport({ storageKey: "bach:travel-status" });
+// One transport per page load; this module only runs in the browser
+// (clientOnly). Statuses are saved to the database and polled (FL-8).
+const transport: StatusTransport = new ServerTransport();
 
 // Badge glyphs are charcoal: teal and orange are too light to read as small
 // marks on cream, so the colour goes on the ring and the badge border.
@@ -121,11 +121,9 @@ export function CrewStatusBar() {
     const viewer = me();
     if (!viewer) return;
     setMyTravel(readMyTravel(viewer.id));
-    try {
-      setMyPhoto(loadMyProfile(viewer.id).avatarDataUrl ?? viewer.image);
-    } catch {
-      setMyPhoto(viewer.image);
-    }
+    const applyPhoto = () => setMyPhoto(loadMyProfile(viewer.id).avatarDataUrl ?? viewer.image);
+    applyPhoto();
+    onCleanup(onMyProfileChange(viewer.id, applyPhoto));
     onCleanup(onMyTravelChange(viewer.id, () => setMyTravel(readMyTravel(viewer.id))));
   });
 
@@ -177,6 +175,7 @@ export function CrewStatusBar() {
                         <div class="flex flex-col items-center gap-2" title={`${m.name}: ${label()}`}>
                           <AvatarCircle
                             initials={m.initials}
+                            photo={m.image}
                             status={statusOf(m)}
                             noFlight={noFlight(m)}
                             showBadge={!noFlight(m)}
@@ -213,7 +212,7 @@ export function CrewStatusBar() {
 
         <Show when={meInCrew()}>
           <p class="text-xs text-charcoal/75">
-            Tap your avatar to update your status. Only you see changes for now.
+            Tap your avatar to update your status. The crew sees it too.
           </p>
         </Show>
       </div>

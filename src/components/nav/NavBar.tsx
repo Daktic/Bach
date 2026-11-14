@@ -11,7 +11,7 @@ import {
   Suspense,
   type JSX,
 } from "solid-js";
-import { loadMyProfile, type MyProfile } from "~/lib/client/my-profile";
+import { loadMyProfile, onMyProfileChange, type MyProfile } from "~/lib/client/my-profile";
 import { signOut, signOutStarted } from "~/lib/client/sign-out";
 import { meQuery } from "~/lib/queries";
 import type { Me } from "~/lib/types";
@@ -162,7 +162,11 @@ function GuestBadge(props: { me: Me; drawerOpen: boolean }) {
   // them whenever the drawer opens so changes show without a reload.
   const [local, setLocal] = createSignal<MyProfile>({});
   createEffect(() => {
-    if (props.drawerOpen) setLocal(loadMyProfile(props.me.id));
+    if (!props.drawerOpen) return;
+    const id = props.me.id;
+    const apply = () => setLocal(loadMyProfile(id));
+    apply();
+    onCleanup(onMyProfileChange(id, apply));
   });
 
   return (

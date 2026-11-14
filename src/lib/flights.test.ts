@@ -1,10 +1,87 @@
 import { describe, expect, it } from "vitest";
 import { enrichFlight, formatTime, sortFlights } from "./flights";
-import { seedFlights } from "./data/flights";
-import type { GuestFlight } from "./types";
+import type { FlightDirection, FlightLeg, GuestFlight } from "./types";
+
+// Sample flights for these tests (the real list in data/flights.ts starts
+// empty). At 2 PM Arizona on Apr 8: chris and andrew landed, gberg and avery
+// in the air, brett boarding, jerid upcoming.
+interface SampleFlight extends FlightLeg {
+  id: string;
+  guestId: string;
+  direction: FlightDirection;
+}
+
+const sampleFlights: SampleFlight[] = [
+  {
+    id: "f1",
+    guestId: "chris",
+    direction: "in",
+    flightNumber: "AA 1105",
+    airline: "American",
+    origin: "JFK",
+    destination: "PHX",
+    departsAt: "2027-04-08T10:00:00-04:00",
+    arrivesAt: "2027-04-08T10:30:00-07:00",
+  },
+  {
+    id: "f2",
+    guestId: "andrew",
+    direction: "in",
+    flightNumber: "WN 4432",
+    airline: "Southwest",
+    origin: "MDW",
+    destination: "PHX",
+    departsAt: "2027-04-08T11:15:00-05:00",
+    arrivesAt: "2027-04-08T11:50:00-07:00",
+  },
+  {
+    id: "f3",
+    guestId: "gberg",
+    direction: "in",
+    flightNumber: "AA 321",
+    airline: "American",
+    origin: "LAX",
+    destination: "PHX",
+    departsAt: "2027-04-08T13:30:00-07:00",
+    arrivesAt: "2027-04-08T15:45:00-07:00",
+  },
+  {
+    id: "f4",
+    guestId: "avery",
+    direction: "in",
+    flightNumber: "DL 567",
+    airline: "Delta",
+    origin: "ATL",
+    destination: "PHX",
+    departsAt: "2027-04-08T15:30:00-04:00",
+    arrivesAt: "2027-04-08T16:00:00-07:00",
+  },
+  {
+    id: "f5",
+    guestId: "brett",
+    direction: "in",
+    flightNumber: "UA 892",
+    airline: "United",
+    origin: "ORD",
+    destination: "PHX",
+    departsAt: "2027-04-08T16:25:00-05:00",
+    arrivesAt: "2027-04-08T17:10:00-07:00",
+  },
+  {
+    id: "f6",
+    guestId: "jerid",
+    direction: "in",
+    flightNumber: "B6 214",
+    airline: "JetBlue",
+    origin: "BOS",
+    destination: "PHX",
+    departsAt: "2027-04-08T21:45:00-04:00",
+    arrivesAt: "2027-04-08T22:30:00-07:00",
+  },
+];
 
 const asGuestFlights = (): GuestFlight[] =>
-  seedFlights.map(({ direction: _d, ...f }) => ({ ...f, guestName: f.guestId }));
+  sampleFlights.map(({ direction: _d, ...f }) => ({ ...f, guestName: f.guestId }));
 
 describe("flight status uses real instants", () => {
   const twoPmArizona = new Date("2027-04-08T14:00:00-07:00");

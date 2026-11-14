@@ -120,18 +120,8 @@ function Driving() {
   );
 }
 
-/** Honest about FL-2: what the guest saved on /me lives only in this browser for now. */
-function SavedLocallyNote() {
-  return (
-    <p class="border-t border-charcoal/8 px-4 py-2.5 text-xs text-charcoal/75">
-      Saved on this phone only. The crew can't see it until flights sync.
-    </p>
-  );
-}
-
 export function MyFlightCard(props: Props) {
   const flight = () => (props.arrival.kind === "flight" ? props.arrival.flight : null);
-  const savedLocally = () => props.arrival.kind !== "none" && props.arrival.savedLocally;
   const ring = () => {
     const f = flight();
     if (f) return RING[f.status];
@@ -158,18 +148,11 @@ export function MyFlightCard(props: Props) {
               </div>
 
               <FlightRoute flight={f()} />
-
-              <Show when={savedLocally()}>
-                <SavedLocallyNote />
-              </Show>
             </>
           )}
         </Match>
         <Match when={props.arrival.kind === "driving"}>
           <Driving />
-          <Show when={savedLocally()}>
-            <SavedLocallyNote />
-          </Show>
         </Match>
       </Switch>
     </div>

@@ -7,13 +7,17 @@
     "start": "node .output/server/index.mjs",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",
     "@auth/solid-start": "^0.19.3",
+    "@libsql/client": "0.18.0",
     "@solidjs/router": "^0.16.3",
     "@solidjs/start": "^2.0.0",
+    "drizzle-orm": "0.45.4",
     "nitro": "^3.0.260610-beta",
     "solid-js": "^1.9.14",
     "stripe": "23.1.0",
@@ -25,6 +29,7 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.2",
+    "drizzle-kit": "0.31.11",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7"

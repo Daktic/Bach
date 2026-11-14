@@ -8,12 +8,12 @@ import { sameTravel, toFlightLeg } from "./flight-entry";
 import { LegPanel } from "./LegPanel";
 import { CarIcon, ErrorNote, SectionHeading } from "./ui";
 
-const STORAGE_ERROR = "Couldn't save on this device. Storage may be full or turned off (private browsing).";
+const SAVE_ERROR = "Couldn't save your flight. Check your connection and try again.";
 
 /**
- * ME-3 / FL-1 / FL-9: the guest's own flights, saved on this device until
- * flights are stored server-side. Mirrors how /flights resolves "my arrival":
- * driving beats any flight, a flight saved here beats the tracker's record.
+ * ME-3 / FL-1 / FL-9: the guest's own flights, saved to the database so the
+ * crew sees them. Mirrors how /flights resolves "my arrival": driving beats
+ * any flight.
  */
 export function FlightSection(props: { me: Me }) {
   const guestId = () => props.me.id;
@@ -42,13 +42,15 @@ export function FlightSection(props: { me: Me }) {
     );
   });
 
-  /** Saves, then shows what was actually stored so a failed write isn't hidden. */
-  function save(next: MyTravel) {
+  /** Saves to the server; shows the change at once and an error if it didn't stick. */
+  async function save(next: MyTravel) {
     const id = guestId();
-    saveMyTravel(id, next);
+    setTravel(next);
+    setSaveError(null);
+    const ok = await saveMyTravel(id, next);
     const stored = loadMyTravel(id);
     setTravel(stored);
-    setSaveError(sameTravel(stored, next) ? null : STORAGE_ERROR);
+    setSaveError(ok && sameTravel(stored, next) ? null : SAVE_ERROR);
   }
 
   // The inbound flight stays saved while "driving" is on. Driving wins wherever
@@ -141,9 +143,7 @@ export function FlightSection(props: { me: Me }) {
 
       <Show when={saveError()}>{(message) => <ErrorNote>{message()}</ErrorNote>}</Show>
 
-      <p class="text-xs text-charcoal/75">
-        Flight details are saved on this device until the shared tracker is connected.
-      </p>
+      <p class="text-xs text-charcoal/75">Your flight shows on the crew's tracker as soon as you save it.</p>
     </section>
   );
 }

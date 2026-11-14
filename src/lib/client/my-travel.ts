@@ -1,12 +1,11 @@
+import { getMyTravel, saveMyTravel as saveOnServer } from "~/lib/api/travel";
 import type { FlightLeg } from "~/lib/types";
-import { hasUtcOffset, parseWallTime } from "~/lib/zoned-time";
 
-// The signed-in guest's own travel details, saved in this browser until they
-// can be stored server-side (FL-1, FL-2, FL-9). Keyed by guest id so two
-// guests sharing a device don't see each other's entries.
+// The signed-in guest's own travel details (FL-1, FL-2, FL-9), stored in the
+// database (ADR 0007). Components read a cached copy synchronously and
+// subscribe for updates; the cache fills from the server on first use.
 //
-// Written by /me, read by /flights and the "Who's here" bar so a guest at
-// least sees their own entry reflected everywhere on their phone.
+// Written by /me, read by /flights and the "Who's here" bar.
 
 export interface MyTravel {
   inbound: FlightLeg | null;
@@ -17,69 +16,62 @@ export interface MyTravel {
 
 export const EMPTY_TRAVEL: MyTravel = { inbound: null, outbound: null, driving: false };
 
-const keyFor = (guestId: string) => `bach:travel:${guestId}`;
 const CHANGE_EVENT = "bach:travel-change";
+const cache = new Map<string, MyTravel>();
+const loading = new Map<string, Promise<void>>();
 
-function isValidLeg(value: unknown): value is FlightLeg {
-  if (!value || typeof value !== "object") return false;
-  const leg = value as Record<string, unknown>;
-  const str = (k: string) => typeof leg[k] === "string" && (leg[k] as string).length > 0;
-  return (
-    str("flightNumber") &&
-    str("origin") &&
-    str("destination") &&
-    str("departsAt") &&
-    str("arrivesAt") &&
-    typeof leg.airline === "string" &&
-    // Only offset-aware times (see FlightLeg) — older entries saved without an
-    // offset can't be placed in time reliably, so they're dropped.
-    hasUtcOffset(leg.departsAt as string) &&
-    hasUtcOffset(leg.arrivesAt as string) &&
-    parseWallTime(leg.departsAt as string) !== null &&
-    parseWallTime(leg.arrivesAt as string) !== null
-  );
+function emit(guestId: string) {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: { guestId } }));
 }
 
+/** Fetches this guest's travel from the server and notifies subscribers. */
+export function refreshMyTravel(guestId: string): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  const pending = loading.get(guestId);
+  if (pending) return pending;
+  const run = getMyTravel()
+    .then((travel) => {
+      cache.set(guestId, travel);
+      emit(guestId);
+    })
+    .catch(() => {
+      // Offline or signed out: keep what we have.
+    })
+    .finally(() => loading.delete(guestId));
+  loading.set(guestId, run);
+  return run;
+}
+
+/** The cached copy (empty until the first fetch lands). Starts a fetch if needed. */
 export function loadMyTravel(guestId: string): MyTravel {
+  const cached = cache.get(guestId);
+  if (!cached) void refreshMyTravel(guestId);
+  return cached ? { ...cached } : { ...EMPTY_TRAVEL };
+}
+
+/** Saves to the server. Shows the change straight away; reverts if the save fails. */
+export async function saveMyTravel(guestId: string, travel: MyTravel): Promise<boolean> {
+  const previous = cache.get(guestId);
+  cache.set(guestId, travel);
+  emit(guestId);
   try {
-    // Inside the try: touching localStorage throws when site data is blocked.
-    if (typeof localStorage === "undefined") return { ...EMPTY_TRAVEL };
-    const raw = localStorage.getItem(keyFor(guestId));
-    if (!raw) return { ...EMPTY_TRAVEL };
-    const parsed = JSON.parse(raw) as Partial<Record<keyof MyTravel, unknown>>;
-    return {
-      inbound: isValidLeg(parsed.inbound) ? parsed.inbound : null,
-      outbound: isValidLeg(parsed.outbound) ? parsed.outbound : null,
-      driving: parsed.driving === true,
-    };
+    cache.set(guestId, await saveOnServer(travel));
+    emit(guestId);
+    return true;
   } catch {
-    return { ...EMPTY_TRAVEL };
+    if (previous) cache.set(guestId, previous);
+    else cache.delete(guestId);
+    emit(guestId);
+    return false;
   }
 }
 
-export function saveMyTravel(guestId: string, travel: MyTravel): void {
-  try {
-    if (typeof localStorage === "undefined") return;
-    localStorage.setItem(keyFor(guestId), JSON.stringify(travel));
-    window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: { guestId } }));
-  } catch {
-    // Storage full or blocked (private mode) — the entry just isn't remembered.
-  }
-}
-
-/** Calls `onChange` when this guest's travel is saved in this tab or another. */
+/** Calls `onChange` whenever this guest's cached travel changes. */
 export function onMyTravelChange(guestId: string, onChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};
-  const onStorage = (e: StorageEvent) => {
-    if (e.key === keyFor(guestId)) onChange();
-  };
   const onLocal = (e: Event) => {
     if ((e as CustomEvent<{ guestId: string }>).detail?.guestId === guestId) onChange();
   };
-  window.addEventListener("storage", onStorage);
   window.addEventListener(CHANGE_EVENT, onLocal);
-  return () => {
-    window.removeEventListener("storage", onStorage);
-    window.removeEventListener(CHANGE_EVENT, onLocal);
-  };
+  return () => window.removeEventListener(CHANGE_EVENT, onLocal);
 }

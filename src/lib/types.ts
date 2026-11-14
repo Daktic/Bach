@@ -106,9 +106,11 @@ export interface CrewMemberView {
   id: string;
   name: string;
   initials: string;
+  /** The guest's uploaded profile photo (a data URL), when they've set one. */
+  image?: string;
   arrivesBy: ArrivalMode;
   hasInboundFlight: boolean;
-  /** Mock until travel status is stored server-side (FL-8). */
+  /** "Who's here" status, from the database (FL-8). */
   status: TravelStatus;
 }
 
