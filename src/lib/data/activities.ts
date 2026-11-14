@@ -11,13 +11,13 @@ export const activityData: Activity[] = [
   // Thursday Apr 8 — Arrival
   {
     id: "thu-arrival",
-    // Pan Am "Fly to the Caribbean by Clipper" poster (Mark von Arenberg). Public domain, via Wikimedia Commons: https://commons.wikimedia.org/wiki/File:ARENBERG,_Mark_von._Fly_to_the_Caribbean_by_Clipper,_Pan_American_World_Airways._(54312271643).jpg
-    image: "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c1/ARENBERG%2C_Mark_von._Fly_to_the_Caribbean_by_Clipper%2C_Pan_American_World_Airways._%2854312271643%29.jpg/960px-ARENBERG%2C_Mark_von._Fly_to_the_Caribbean_by_Clipper%2C_Pan_American_World_Airways._%2854312271643%29.jpg",
+    // American Airlines "California, Arizona, Texas, New Mexico" poster by E. McKnight Kauffer, 1948. Public domain, via Wikimedia Commons: https://commons.wikimedia.org/wiki/File:American_Airlines_poster_-_California,_Arizona,_Texas,_New_Mexico_-_1948.jpg
+    image: "https://upload.wikimedia.org/wikipedia/commons/9/96/American_Airlines_poster_-_California%2C_Arizona%2C_Texas%2C_New_Mexico_-_1948.jpg",
     day: "2027-04-08",
     title: "Arrive & Check In",
     description: "Flights land, grab the keys to the Airbnb, and get settled in.",
     startTime: "15:00",
-    location: "Old Town Scottsdale, AZ",
+    // Add the Dos Palms address here once booked (Airbnb shares it after booking).
     poolId: "accommodation",
   },
   {
@@ -33,13 +33,13 @@ export const activityData: Activity[] = [
   // Friday Apr 9
   {
     id: "fri-secret",
-    // Vichy travel poster by Roger Broders, 1928. Public domain, via Wikimedia Commons: https://commons.wikimedia.org/wiki/File:Vichy_(1928,_Broders).jpg
-    image: "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c6/Vichy_%281928%2C_Broders%29.jpg/960px-Vichy_%281928%2C_Broders%29.jpg",
+    // "Giant Cactus" linen postcard, Newberry Library (NBY 21853): https://commons.wikimedia.org/wiki/File:Giant_Cactus_(NBY_21853).jpg. Public domain, via Wikimedia Commons
+    image: "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Giant_Cactus_%28NBY_21853%29.jpg/500px-Giant_Cactus_%28NBY_21853%29.jpg",
     day: "2027-04-09",
     title: "Secret Activity",
     description: "The whole day is planned. Details stay secret until Friday morning.",
-    startTime: "09:00",
-    endTime: "18:00",
+    startTime: "07:00",
+    endTime: "17:00",
   },
   {
     id: "fri-dinner",
@@ -88,19 +88,19 @@ export const activityData: Activity[] = [
   },
   {
     id: "sun-dinner",
-    // Pan Am "To Mexico" Clipper poster. Public domain, via Wikimedia Commons: https://commons.wikimedia.org/wiki/File:PanAm_Mexico_Clipper_Poster_(18855447284).jpg
-    image: "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/91/PanAm_Mexico_Clipper_Poster_%2818855447284%29.jpg/960px-PanAm_Mexico_Clipper_Poster_%2818855447284%29.jpg",
+    // "Hip, Hip, Hurrah!" by P. S. Krøyer, 1888: friends toasting at a long table. Public domain, via Wikimedia Commons: https://commons.wikimedia.org/wiki/File:Hipp_hipp_hurra!_Konstn%C3%A4rsfest_p%C3%A5_Skagen_-_Peder_Severin_Kr%C3%B8yer.jpg
+    image: "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/28/Hipp_hipp_hurra%21_Konstn%C3%A4rsfest_p%C3%A5_Skagen_-_Peder_Severin_Kr%C3%B8yer.jpg/960px-Hipp_hipp_hurra%21_Konstn%C3%A4rsfest_p%C3%A5_Skagen_-_Peder_Severin_Kr%C3%B8yer.jpg",
     day: "2027-04-11",
     title: "Last Supper",
-    description: "Final group dinner before everyone heads home.",
+    description: "One long table, good food and the whole crew. Raise a glass to the groom and swap the best stories of the weekend before everyone heads home.",
     startTime: "19:00",
   },
 
   // Monday Apr 12 — Departure
   {
     id: "mon-checkout",
-    // Pan Am "Fly by Clipper to Guatemala" poster. Public domain, via Wikimedia Commons: https://commons.wikimedia.org/wiki/File:Fly_By_Clipper_To_Guatemala.jpg
-    image: "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3a/Fly_By_Clipper_To_Guatemala.jpg/960px-Fly_By_Clipper_To_Guatemala.jpg",
+    // Jokake Inn, Phoenix, linen postcard, Newberry Library (NBY 3049): https://commons.wikimedia.org/wiki/File:Jokake_Inn_(NBY_3049).jpg. Public domain, via Wikimedia Commons
+    image: "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ee/Jokake_Inn_%28NBY_3049%29.jpg/960px-Jokake_Inn_%28NBY_3049%29.jpg",
     day: "2027-04-12",
     title: "Check Out & Depart",
     description: "Pack up, clean up, say the goodbyes.",

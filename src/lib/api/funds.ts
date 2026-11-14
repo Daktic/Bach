@@ -3,7 +3,7 @@
 import { getRequestEvent } from "solid-js/web";
 import { dollarsToCents, withCardFees } from "~/lib/card-fees";
 import { activityData } from "~/lib/data/activities";
-import { mockContributions, pools } from "~/lib/data/funds";
+import { mockContributions, offlinePayments, pools } from "~/lib/data/funds";
 import { guestIds } from "~/lib/data/guests";
 import { balanceDue, isValidOpenAmount, OPEN_AMOUNT_MAX, OPEN_AMOUNT_MIN, toPoolView } from "~/lib/funds";
 import { withForwardedOrigin } from "~/lib/server/forwarded";
@@ -35,9 +35,13 @@ function activitiesFor(poolId: string) {
     .map((a) => ({ id: a.id, title: a.title }));
 }
 
-/** Payments from Stripe once it's set up (ADR 0010), mock data before that. */
+/**
+ * Payments from Stripe once it's set up (ADR 0010), mock data before that,
+ * plus payments made outside Stripe and entered by hand.
+ */
 async function contributions(): Promise<readonly Contribution[]> {
-  return isStripeConfigured() ? listContributions() : mockContributions;
+  const card = isStripeConfigured() ? await listContributions() : mockContributions;
+  return [...card, ...offlinePayments];
 }
 
 function viewFor(pool: Pool, all: readonly Contribution[], guestId: string): PoolView {
@@ -91,7 +95,7 @@ export async function startCheckout(
     if (pool.choices) {
       // Pick-your-group pool: the server checks the group and the price.
       invalidatePayments();
-      const view = viewFor(pool, await listContributions(), guest.id);
+      const view = viewFor(pool, [...(await listContributions()), ...offlinePayments], guest.id);
       const picked = pool.choices.find((c) => c.id === choiceId);
       if (!picked) throw new UserFacingError("Pick a group first.");
       if (view.myChoice && view.myChoice !== picked.id) {
@@ -109,7 +113,7 @@ export async function startCheckout(
     } else {
       // Fresh numbers, so nobody is charged twice for a payment that just landed.
       invalidatePayments();
-      charge = balanceDue(viewFor(pool, await listContributions(), guest.id));
+      charge = balanceDue(viewFor(pool, [...(await listContributions()), ...offlinePayments], guest.id));
       if (charge <= 0) throw new UserFacingError("You're already paid up for this one.");
     }
     const amount = dollarsToCents(charge);

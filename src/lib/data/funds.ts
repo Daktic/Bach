@@ -131,6 +131,23 @@ export const pools: Pool[] = [
   },
 ];
 
+// Payments made outside Stripe (cash, a transfer, or the organiser's own
+// money), entered by hand. They count toward totals like Stripe payments, and
+// a guest who pays a pool this way owes no card fee on it. Amounts are the
+// plain share, before card fees. For golf, also set choiceId to the group.
+function offline(poolId: string, guestId: string, amount: number, paidAt: string, choiceId?: string): Contribution {
+  return { id: `offline-${poolId}-${guestId}-${paidAt}-${amount}`, poolId, guestId, amount, paidAt, offline: true, ...(choiceId ? { choiceId } : {}) };
+}
+
+export const offlinePayments: Contribution[] = [
+  // Garrett covers his own share directly.
+  offline("accommodation", "gberg", 712.9, "2026-11-14"),
+  offline("party-bus", "gberg", 150, "2026-11-14"),
+  offline("omakase", "gberg", 200, "2026-11-14"),
+  offline("golf", "gberg", 310, "2026-11-14", "cholla"),
+  offline("drinks", "gberg", 100, "2026-11-14"), // Food & Drink Fund
+];
+
 // Mock payments, shown only when Stripe isn't configured. With
 // STRIPE_SECRET_KEY set, payments come from Stripe (~/lib/server/stripe).
 function paid(poolId: string, share: number, guestIds: string[], paidAt: string, choiceId?: string): Contribution[] {
@@ -145,11 +162,11 @@ function paid(poolId: string, share: number, guestIds: string[], paidAt: string,
 }
 
 export const mockContributions: Contribution[] = [
-  ...paid("accommodation", 712.9, ["gberg", "chris", "andrew", "avery", "brett", "jerid", "matt", "scott"], "2026-12-01T17:00:00Z"),
+  ...paid("accommodation", 712.9, ["chris", "andrew", "avery", "brett", "jerid", "matt", "scott"], "2026-12-01T17:00:00Z"),
   ...paid("party-bus", 150, ["chris", "andrew"], "2026-12-06T17:00:00Z"),
   ...paid("golf", 310, ["chris", "andrew", "avery"], "2026-12-10T17:00:00Z", "cholla"),
   ...paid("golf", 110, ["brett", "jerid"], "2026-12-10T17:00:00Z", "desert-canyon"),
-  ...paid("omakase", 200, ["gberg", "chris", "andrew", "avery", "brett", "jerid"], "2026-12-12T17:00:00Z"),
+  ...paid("omakase", 200, ["chris", "andrew", "avery", "brett", "jerid"], "2026-12-12T17:00:00Z"),
   ...paid("drinks", 50, ["chris"], "2026-12-14T17:00:00Z"),
   ...paid("drinks", 20, ["andrew", "avery"], "2026-12-15T17:00:00Z"),
 ];

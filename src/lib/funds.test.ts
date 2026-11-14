@@ -159,3 +159,29 @@ describe("pick-your-group pools", () => {
     expect(isOverdue(view, new Date("2027-02-16T00:00:01-07:00"))).toBe(true);
   });
 });
+
+describe("payments made outside Stripe", () => {
+  const offlinePaid: Contribution[] = [
+    ...contributions,
+    { id: "o1", poolId: "bus", guestId: "c", amount: 80, paidAt: "2026-11-14", offline: true },
+  ];
+
+  it("settles the plain share, with no card fee", () => {
+    const view = toPoolView(pool, offlinePaid, "c", roster);
+    expect(view.myShare).toBe(80);
+    expect(view.myCardFee).toBe(0);
+    expect(view.myPaid).toBe(80);
+    expect(isPaidUp(view)).toBe(true);
+  });
+
+  it("counts toward the raised total and lowers the target by the fee not charged", () => {
+    const before = toPoolView(pool, contributions, "a", roster);
+    const after = toPoolView(pool, offlinePaid, "a", roster);
+    expect(after.raisedAmount).toBeCloseTo(before.raisedAmount + 80, 2);
+    expect(after.targetAmount).toBeCloseTo(before.targetAmount - (withCardFees(80) - 80), 2);
+  });
+
+  it("leaves other guests' card fees alone", () => {
+    expect(toPoolView(pool, offlinePaid, "a", roster).myShare).toBe(withCardFees(80));
+  });
+});

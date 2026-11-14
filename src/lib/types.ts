@@ -181,6 +181,11 @@ export interface Contribution {
   paidAt: string; // ISO instant
   /** For a pick-your-group pool: which group this payment was for. */
   choiceId?: string;
+  /**
+   * Paid outside Stripe (cash, transfer, or the organiser's own money),
+   * recorded by hand. No card fee applies to a guest who pays this way.
+   */
+  offline?: boolean;
 }
 
 /**

@@ -15,9 +15,24 @@ export function chargeFor(pool: Pool, guestId: string): number {
   return withCardFees(shareFor(pool, guestId));
 }
 
-/** What the pool must raise: every guest's charge, so it nets the full cost. */
-export function poolTarget(pool: Pool, guestIds: readonly string[]): number {
-  const cents = guestIds.reduce((sum, id) => sum + Math.round(chargeFor(pool, id) * 100), 0);
+/** True when `guestId` paid this pool outside Stripe, so owes no card fee. */
+export function paysOffline(pool: Pool, contributions: readonly Contribution[], guestId: string): boolean {
+  return contributions.some((c) => c.poolId === pool.id && c.guestId === guestId && c.offline);
+}
+
+/**
+ * What the pool must raise: every guest's charge, so it nets the full cost.
+ * A guest who pays outside Stripe counts at their share, with no card fee.
+ */
+export function poolTarget(
+  pool: Pool,
+  guestIds: readonly string[],
+  contributions: readonly Contribution[] = [],
+): number {
+  const cents = guestIds.reduce((sum, id) => {
+    const amount = paysOffline(pool, contributions, id) ? shareFor(pool, id) : chargeFor(pool, id);
+    return sum + Math.round(amount * 100);
+  }, 0);
   return cents / 100;
 }
 
@@ -57,6 +72,7 @@ export function toPoolView(
   const picked = choices?.find((c) => c.id === myChoice) ?? null;
   // A pick-your-group pool: the viewer owes their group's price once picked.
   const myBase = choices ? (picked?.price ?? 0) : shareFor(pool, guestId);
+  const offline = paysOffline(pool, contributions, guestId);
   return {
     id: pool.id,
     title: pool.title,
@@ -65,11 +81,12 @@ export function toPoolView(
     photos: (pool.photos ?? []).map((p) => ({ ...p })),
     // A pick-your-group pool has no fixed goal: group sizes aren't known
     // until everyone picks. Its page shows players per group instead.
-    targetAmount: choices ? 0 : poolTarget(pool, guestIds),
+    targetAmount: choices ? 0 : poolTarget(pool, guestIds, contributions),
     raisedAmount: raisedCents / 100,
     dueDate: pool.dueDate,
-    myShare: withCardFees(myBase),
-    myCardFee: cardFeeFor(myBase),
+    // Paid outside Stripe: no card, so no card fee.
+    myShare: offline ? myBase : withCardFees(myBase),
+    myCardFee: offline ? 0 : cardFeeFor(myBase),
     myPaid: myPaidCents / 100,
     canPay: options.canPay ?? false,
     open: pool.open ? { presets: [...pool.open.presets] } : null,
