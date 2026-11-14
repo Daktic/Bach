@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Saguaro under a desert sun. Same flat palette as the app (app.css). -->
+  <rect width="64" height="64" fill="#f9f7db"/>
+  <circle cx="47" cy="17" r="8" fill="#62d8c7"/>
+  <g fill="none" stroke="#ef6917" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 38H19.5V27"/>
+    <path d="M36 32H43.5V23"/>
+  </g>
+  <path d="M26.5 52V16a5 5 0 0 1 10 0V52Z" fill="#ef6917"/>
+  <path d="M11 52H53" stroke="#454346" stroke-width="3.5" stroke-linecap="round"/>
+</svg>

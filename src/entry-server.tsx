@@ -25,7 +25,8 @@ export default createHandler(() => (
           {/* Invite-only site: keep it out of search engines (see also robots.txt). */}
           <meta name="robots" content="noindex, nofollow" />
           <meta name="theme-color" content="#f9f7db" />
-          <link rel="icon" href="/favicon.ico" />
+          <link rel="icon" href="/favicon.ico" sizes="32x32" />
+          <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
           {/* NAV-3: installable PWA. The manifest and icons are public in middleware.ts. */}
           <link rel="manifest" href="/manifest.webmanifest" />
           <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />

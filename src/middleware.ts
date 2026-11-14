@@ -11,6 +11,7 @@ import { safeNextPath, signInUrlFor } from "~/lib/redirects";
 const PUBLIC_PREFIXES = ["/api/auth/", "/_build/", "/assets/", "/icons/"];
 const PUBLIC_FILES = new Set([
   "/favicon.ico",
+  "/favicon.svg",
   "/manifest.webmanifest",
   "/robots.txt",
   "/apple-touch-icon.png",
