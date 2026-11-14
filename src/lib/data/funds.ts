@@ -1,10 +1,16 @@
 import "server-only";
+import { withCardFees } from "~/lib/card-fees";
 import type { Contribution, Pool } from "~/lib/types";
 
 // Pools and shares are hand-seeded by the organiser (FN-7, FN-9).
+// `cost` is what the vendor charges; shares are each guest's part of it, and
+// together they must cover the cost (a test checks this). Both are BEFORE
+// card fees: guests are charged their share plus Stripe's 2.9% + 30¢, so the
+// pool still nets the full cost (~/lib/card-fees).
 // Every guest owes `shares.default` unless `shares.overrides` says otherwise,
-// e.g. `overrides: { someGuestId: 0 }` for the groom. A $0 share shows no Pay
-// button. Due dates are end of day, Arizona time (FN-8).
+// e.g. `overrides: { someGuestId: 0 }` for the groom (then raise the others'
+// shares to cover it). A $0 share shows no Pay button. Due dates are end of
+// day, Arizona time (FN-8).
 //
 // All values below are mock until the real costs are known.
 
@@ -14,7 +20,7 @@ export const pools: Pool[] = [
     title: "Scottsdale House",
     description: "5BR Airbnb in Old Town with a pool, fire pit, and a putting green for all 4 nights.",
     placeholderGradient: "linear-gradient(145deg, #b8824a 0%, #d9a96e 45%, #f0d4a8 100%)",
-    targetAmount: 3200,
+    cost: 3200,
     dueDate: "2027-01-15",
     shares: { default: 320 },
   },
@@ -23,7 +29,7 @@ export const pools: Pool[] = [
     title: "Party Bus",
     description: "Roundtrip from PHX + wheels on demand all weekend so nobody has to call an Uber.",
     placeholderGradient: "linear-gradient(145deg, #4a3a9e 0%, #7a66d4 45%, #b8abf0 100%)",
-    targetAmount: 800,
+    cost: 800,
     dueDate: "2027-03-01",
     shares: { default: 80 },
   },
@@ -32,7 +38,7 @@ export const pools: Pool[] = [
     title: "Golf Day",
     description: "18 holes at TPC Scottsdale — cart, range balls, and the full 19th hole experience.",
     placeholderGradient: "linear-gradient(145deg, #2d6e28 0%, #57a852 45%, #9ed99a 100%)",
-    targetAmount: 1500,
+    cost: 1500,
     dueDate: "2027-02-15",
     shares: { default: 150 },
   },
@@ -41,19 +47,20 @@ export const pools: Pool[] = [
     title: "Steak Night",
     description: "Deposit on the private dining room at Bourbon Steak — Friday night, suits optional.",
     placeholderGradient: "linear-gradient(145deg, #7a2222 0%, #b84a4a 45%, #e09080 100%)",
-    targetAmount: 600,
+    cost: 600,
     dueDate: "2027-03-15",
     shares: { default: 60 },
   },
 ];
 
-// Mock payments. Replaced by records written by the Stripe webhook (FN-5).
-function paid(poolId: string, amount: number, guestIds: string[], paidAt: string): Contribution[] {
+// Mock payments, shown only when Stripe isn't configured. With
+// STRIPE_SECRET_KEY set, payments come from Stripe (~/lib/server/stripe).
+function paid(poolId: string, share: number, guestIds: string[], paidAt: string): Contribution[] {
   return guestIds.map((guestId) => ({
     id: `mock-${poolId}-${guestId}`,
     poolId,
     guestId,
-    amount,
+    amount: withCardFees(share),
     paidAt,
   }));
 }

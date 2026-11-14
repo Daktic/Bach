@@ -1,10 +1,11 @@
-import { Match, Show, Switch } from "solid-js";
+import { createSignal, Match, Show, Switch } from "solid-js";
+import { startCheckout } from "~/lib/api/funds";
 import { balanceDue } from "~/lib/funds";
 import type { PoolView } from "~/lib/types";
 import { formatMoney, shareState } from "./pool-status";
 
 interface Props {
-  pool: Pick<PoolView, "myShare" | "myPaid">;
+  pool: Pick<PoolView, "id" | "myShare" | "myPaid" | "myCardFee" | "canPay">;
 }
 
 function CheckIcon() {
@@ -24,11 +25,28 @@ function LockIcon() {
 }
 
 /**
- * The pay area on a pool page (FN-3). Stripe Checkout (FN-4) isn't set up
- * yet, so the Pay button is shown but disabled.
+ * The pay area on a pool page (FN-3, FN-4). Pay opens Stripe Checkout for the
+ * guest's unpaid balance; the server works out the amount. Without Stripe
+ * configured, the button is shown but disabled.
  */
 export function PayPanel(props: Props) {
   const state = () => shareState(props.pool);
+  const [pending, setPending] = createSignal(false);
+  const [error, setError] = createSignal<string | null>(null);
+
+  async function pay() {
+    if (pending()) return;
+    setPending(true);
+    setError(null);
+    try {
+      const { url } = await startCheckout(props.pool.id);
+      // Stays "Opening checkout…" while the browser leaves for Stripe.
+      window.location.assign(url);
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Couldn't open the payment page. Try again.");
+      setPending(false);
+    }
+  }
 
   return (
     <Switch>
@@ -57,6 +75,34 @@ export function PayPanel(props: Props) {
             </p>
           </div>
         </div>
+      </Match>
+
+      <Match when={(state() === "unpaid" || state() === "partial") && props.pool.canPay}>
+        <button
+          type="button"
+          onClick={pay}
+          disabled={pending()}
+          aria-busy={pending()}
+          aria-describedby="pay-note"
+          // Charcoal on orange is 3.1:1, so the label stays large (20px bold).
+          class="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-orange px-4
+                 text-xl font-black text-charcoal transition-transform active:scale-[0.98]
+                 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal
+                 disabled:cursor-wait disabled:opacity-70"
+        >
+          {pending() ? "Opening checkout…" : `Pay ${formatMoney(balanceDue(props.pool))}`}
+        </button>
+        <Show when={error()}>
+          <p role="alert" class="mt-2 text-center text-sm font-semibold text-charcoal">
+            {error()}
+          </p>
+        </Show>
+        <p id="pay-note" class="mt-2 text-center text-xs text-charcoal/75">
+          Secure checkout by Stripe.
+          <Show when={props.pool.myCardFee > 0}>
+            {" "}Includes a {formatMoney(props.pool.myCardFee)} card fee, so the pool gets your full share.
+          </Show>
+        </p>
       </Match>
 
       <Match when={state() === "unpaid" || state() === "partial"}>

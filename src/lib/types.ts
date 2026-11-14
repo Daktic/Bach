@@ -117,6 +117,8 @@ export interface CrewMemberView {
 /**
  * A pooled expense. Hand-seeded in src/lib/data/funds.ts.
  * Each guest's share is `shares.default` unless overridden per guest (FN-9).
+ * `cost` and `shares` are before card fees: guests are charged their share
+ * plus Stripe's fee (see ~/lib/card-fees), so the pool nets the full cost.
  */
 export interface Pool {
   id: string;
@@ -124,7 +126,7 @@ export interface Pool {
   description: string;
   placeholderGradient: string; // CSS gradient used as hero when no real image is set
   image?: string;              // /public path — overrides gradient when present
-  targetAmount: number;
+  cost: number;                // what the vendor charges, before card fees
   dueDate?: string;            // "YYYY-MM-DD", end of day Arizona time (FN-8)
   shares: {
     default: number;
@@ -132,7 +134,7 @@ export interface Pool {
   };
 }
 
-/** One payment toward a pool. Mock until Stripe webhooks record them (FN-5). */
+/** One payment toward a pool: a paid Stripe Checkout Session, or mock data without Stripe. */
 export interface Contribution {
   id: string;
   poolId: string;
@@ -151,11 +153,17 @@ export interface PoolView {
   description: string;
   placeholderGradient: string;
   image?: string;
+  /** The cost plus every guest's card fee: what the pool must raise. */
   targetAmount: number;
   raisedAmount: number;
   dueDate?: string;
+  /** The viewer's share including the card fee: what they're charged. */
   myShare: number;
+  /** The card-fee part of myShare. */
+  myCardFee: number;
   myPaid: number;
+  /** True when card payments are set up (Stripe configured). */
+  canPay: boolean;
   /** Activities on the timeline paid for by this pool (TL-5). */
   activities: { id: string; title: string }[];
 }

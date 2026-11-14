@@ -26,6 +26,9 @@ importers:
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
+      stripe:
+        specifier: 23.1.0
+        version: 23.1.0(@types/node@26.6.2)
       vite:
         specifier: ^8.0.0
         version: 8.1.4(@types/node@26.6.2)(esbuild@0.17.19)(jiti@2.7.0)(terser@5.51.2)
@@ -2834,6 +2837,15 @@ packages:
   strip-literal@3.1.0:
     resolution: {integrity: sha512-8r3mkIM/2+PpjHoOtiAW8Rg3jJLHaV7xPwG+YRGrv6FP0wwk/toTpATxWYOW0BKdWwl82VT2tFYi5DlROa0Mxg==}
 
+  stripe@23.1.0:
+    resolution: {integrity: sha512-fVUfMSfTPoukfoV//MUKAx2+YxyKmYaYtnAL9VkfnHfaPNQylFdWZMD+zgUFerI8rjbaiER8Vzj2XEUQ2AhAsQ==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@types/node': '>=20'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+
   supports-preserve-symlinks-flag@1.0.0:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
@@ -4395,7 +4407,7 @@ snapshots:
 
   '@rollup/pluginutils@5.4.0(rollup@3.30.0)':
     dependencies:
-      '@types/estree': 1.0.9
+      '@types/estree': 1.0.10
       estree-walker: 2.0.2
       picomatch: 4.0.5
     optionalDependencies:
@@ -5925,6 +5937,10 @@ snapshots:
   strip-literal@3.1.0:
     dependencies:
       js-tokens: 9.0.1
+
+  stripe@23.1.0(@types/node@26.6.2):
+    optionalDependencies:
+      '@types/node': 26.6.2
 
   supports-preserve-symlinks-flag@1.0.0: {}
 

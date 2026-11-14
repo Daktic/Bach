@@ -19,7 +19,9 @@ function view(overrides: Partial<PoolView> = {}): PoolView {
     raisedAmount: 320,
     dueDate: "2027-03-01",
     myShare: 80,
+    myCardFee: 0,
     myPaid: 0,
+    canPay: false,
     activities: [],
     ...overrides,
   };

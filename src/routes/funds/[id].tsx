@@ -1,6 +1,6 @@
-import { A, createAsync, query, type RouteDefinition, useParams } from "@solidjs/router";
+import { A, createAsync, query, revalidate, type RouteDefinition, useNavigate, useParams, useSearchParams } from "@solidjs/router";
 import { HttpStatusCode } from "@solidjs/start";
-import { ErrorBoundary, For, Match, type ParentProps, Show, Suspense, Switch } from "solid-js";
+import { createSignal, ErrorBoundary, For, Match, onMount, type ParentProps, Show, Suspense, Switch } from "solid-js";
 import { Dot } from "~/components/funds/Dot";
 import { DueBadge } from "~/components/funds/DueBadge";
 import { FundsMessage, LoadFailed, messageActionClass } from "~/components/funds/FundsMessage";
@@ -8,13 +8,13 @@ import { ProgressBar } from "~/components/funds/FundingProgress";
 import { PayPanel } from "~/components/funds/PayPanel";
 import { PoolHero } from "~/components/funds/PoolHero";
 import { amountToGo, formatMoney, fundedPercent, shareState } from "~/components/funds/pool-status";
-import { getMyPool } from "~/lib/api/funds";
+import { type CheckoutReturn, confirmCheckout, getMyPool } from "~/lib/api/funds";
 import { createNow } from "~/lib/client/clock";
 import { balanceDue, isFullyFunded, isOverdue } from "~/lib/funds";
 import type { PoolView } from "~/lib/types";
 
 // Wrapped in query() so the route can preload it, a redirect from the server
-// is followed, and a future payment flow can revalidate the "myPool" key.
+// is followed, and the return from Stripe can revalidate the "myPool" key.
 const myPool = query((id: string) => getMyPool(id), "myPool");
 
 export const route = {
@@ -211,6 +211,61 @@ function DetailSkeleton() {
   );
 }
 
+// ─── Back from Stripe Checkout (FN-6) ─────────────────────────────────────────
+
+type Notice = CheckoutReturn | "cancelled";
+
+const NOTICE_TEXT: Record<Notice, string> = {
+  paid: "Payment received. Thanks!",
+  processing: "Your payment is processing. It'll show here once it clears.",
+  unknown: "Checking your payment… If it doesn't show up in a minute, refresh the page.",
+  cancelled: "Payment cancelled. You haven't been charged.",
+};
+
+/**
+ * Stripe sends the guest back with ?checkout=success&session_id=… (or
+ * ?checkout=cancelled). Confirm the session so the pool shows as paid right
+ * away, then drop the query string so a reload doesn't repeat it.
+ */
+function CheckoutNotice() {
+  const [search] = useSearchParams();
+  const navigate = useNavigate();
+  const params = useParams();
+  const [notice, setNotice] = createSignal<Notice | null>(null);
+
+  onMount(async () => {
+    const checkout = search.checkout;
+    if (checkout !== "success" && checkout !== "cancelled") return;
+    const sessionId = typeof search.session_id === "string" ? search.session_id : "";
+    navigate(`/funds/${encodeURIComponent(params.id ?? "")}`, { replace: true, scroll: false });
+    if (checkout === "cancelled") {
+      setNotice("cancelled");
+      return;
+    }
+    setNotice("unknown");
+    setNotice(await confirmCheckout(sessionId));
+    await revalidate([myPool.key, "myPools"]);
+  });
+
+  return (
+    <Show when={notice()}>
+      {(n) => (
+        <p
+          role="status"
+          class={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold text-charcoal ${
+            n() === "paid" ? "border-teal bg-teal/15" : "border-charcoal/15 bg-charcoal/5"
+          }`}
+        >
+          <Show when={n() === "paid"}>
+            <Dot class="bg-teal" />
+          </Show>
+          {NOTICE_TEXT[n()]}
+        </p>
+      )}
+    </Show>
+  );
+}
+
 export default function FundDetailPage() {
   const params = useParams();
   // deferStream: wait for the pool before streaming, so an unknown id can
@@ -220,6 +275,7 @@ export default function FundDetailPage() {
   return (
     <div class="mx-auto max-w-lg space-y-3 px-4 pb-10 pt-2">
       <BackLink />
+      <CheckoutNotice />
 
       <ErrorBoundary
         fallback={(err) => {

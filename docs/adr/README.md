@@ -17,6 +17,7 @@ An ADR captures a significant architectural decision: the context, the decision 
 | [0007](0007-turso-sqlite-storage.md) | Turso (SQLite at the edge) for persistent storage | Proposed |
 | [0008](0008-aerodatabox-live-flight-status.md) | AeroDataBox for live flight status | Proposed |
 | [0009](0009-invite-only-auth-with-env-guest-list.md) | Invite-only sign-in: Auth.js JWT sessions + a guest list kept out of the repo | Proposed |
+| [0010](0010-stripe-checkout-with-stripe-as-payment-record.md) | Pool payments: Stripe Checkout, with Stripe as the payment record | Proposed |
 
 ## Process
 

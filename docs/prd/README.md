@@ -134,14 +134,14 @@ Shared costs (house, party bus, golf, dinner) each have a goal and a per-guest s
 |----|-------------|-----|-------|
 | FN-1 | `/funds` lists every pool with title, goal, amount raised, progress bar, and the guest's own share | P0 | 🟡 built on mock pools and payments |
 | FN-2 | Header shows "paid up on N of M" for the signed-in guest | P0 | ✅ (mock payments) |
-| FN-3 | Pool detail page explains what the pool covers and shows a **Pay $X** button for the guest's unpaid balance | P0 | 🟡 built; Pay button disabled until FN-4 |
-| FN-4 | **Pay** opens Stripe Checkout (hosted) for that guest's share of that pool. The checkout session carries the guest id and pool id so the payment can be matched. | P0 | ⬜ needs Stripe |
-| FN-5 | A Stripe webhook records each successful payment as a contribution. Raised totals and "paid up" status are derived from these records. Duplicate webhook deliveries don't double-count. | P0 | ⬜ needs Stripe and storage |
-| FN-6 | After paying, the guest returns to the pool page and sees it marked paid (allowing a few seconds for the webhook) | P0 | ⬜ needs Stripe |
-| FN-7 | Pools, per-guest shares and contributions are stored server-side; pools and shares are seeded by hand | P0 | 🟡 pools and shares hand-seeded in `src/lib/data/funds.ts`; payments need Stripe and storage |
+| FN-3 | Pool detail page explains what the pool covers and shows a **Pay $X** button for the guest's unpaid balance | P0 | ✅ includes the card fee in the share |
+| FN-4 | **Pay** opens Stripe Checkout (hosted) for that guest's share of that pool. The checkout session carries the guest id and pool id so the payment can be matched. | P0 | ✅ [ADR 0010](../adr/0010-stripe-checkout-with-stripe-as-payment-record.md); works in the Bach sandbox |
+| FN-5 | A Stripe webhook records each successful payment as a contribution. Raised totals and "paid up" status are derived from these records. Duplicate webhook deliveries don't double-count. | P0 | ✅ payments are read from Stripe itself until Turso; the signed webhook refreshes them (ADR 0010) |
+| FN-6 | After paying, the guest returns to the pool page and sees it marked paid (allowing a few seconds for the webhook) | P0 | ✅ |
+| FN-7 | Pools, per-guest shares and contributions are stored server-side; pools and shares are seeded by hand | P0 | 🟡 pools and shares hand-seeded in `src/lib/data/funds.ts`; payments live in Stripe until Turso |
 | FN-8 | Each pool has an optional due date; overdue unpaid shares are highlighted to the guest | P1 | ✅ |
 | FN-9 | Shares can differ per guest (e.g. the groom's share is $0 and shows no Pay button) | P1 | ✅ via `shares.overrides` |
-| FN-10 | Apple Pay / Google Pay available in Checkout | P2 | ⬜ Stripe setting |
+| FN-10 | Apple Pay / Google Pay available in Checkout | P2 | ✅ Apple Pay shows in the sandbox; methods are managed in the Stripe dashboard |
 
 **Acceptance:** in Stripe test mode, a guest taps Pay on Party Bus and completes checkout with a test card. Within a few seconds their `/funds` header increments, the pool's raised amount goes up by their share, and the Pay button is gone. Replaying the same webhook event changes nothing. A guest never sees another guest's payment status.
 
@@ -210,7 +210,7 @@ Dates work back from the trip. Adjust as plans firm up.
 | **M4 — Travel-day polish** | Mar 2027 | FL-4, FL-7–8, TL-4, FN-8–9, AUTH-5, FL-9, final itinerary content (TL-8) |
 | **Trip** | Apr 8–12, 2027 | Freeze. Bug fixes only. |
 
-**Status (2026-11-14):** everything that doesn't need outside setup is built and has been through a security, time-zone and accessibility review: M1 apart from Turso, the M2 flows on mock data, the M3 screens without payments, and most of M4. What's left is setup (§12) plus FL-2, FL-4, FN-4–7 and ME-4.
+**Status (2026-11-14):** everything that doesn't need outside setup is built and has been through a security, time-zone and accessibility review: M1 apart from Turso, the M2 flows on mock data, M3 including Stripe payments (test mode), and most of M4. What's left is setup (§12) plus FL-2, FL-4, FN-7 storage and ME-4.
 
 **Booking deadline for guests:** TBD (suggest ~8 weeks out, mid-Feb 2027).
 
@@ -220,8 +220,8 @@ Dates work back from the trip. Adjust as plans firm up.
 
 1. **Flight status provider.** ADR 0008 picks AeroDataBox, but the code uses Aviationstack for lookup and SerpAPI for fare search. Which is the live-status source? Supersede or update ADR 0008 to match. Aviationstack's `/flights` endpoint, which the lookup uses, only covers today's and past flights, so it can't find an April 2027 flight ahead of time. The form then says the lookup isn't available and offers manual entry. Looking up future flights needs Aviationstack's future-schedules endpoint (paid plans) or another provider.
 2. ~~**Auth library.**~~ Answered by [ADR 0009](../adr/0009-invite-only-auth-with-env-guest-list.md): Auth.js with JWT sessions, an invite list in `GUEST_EMAILS`, no database adapter.
-3. **Stripe fees.** Stripe takes ~2.9% + 30¢ per card payment. Do guests pay a little extra to cover it, or does the pool absorb it? This changes what the Pay button charges.
-4. **Payment storage.** Should Stripe and its webhook get an ADR (Checkout vs. Payment Links, how payments are matched to guests)?
+3. ~~**Stripe fees.**~~ Answered: pools absorb the fee. Each share is grossed up so the pool nets the full cost after Stripe's 2.9% + 30¢ (ADR 0010).
+4. ~~**Payment storage.**~~ Answered by [ADR 0010](../adr/0010-stripe-checkout-with-stripe-as-payment-record.md): Checkout Sessions tagged with guest and pool, read back from Stripe.
 5. **Realtime transport** for "Who's here" (FL-8): polling every 30 s is probably enough for 10 people. SSE only if that feels laggy.
 6. **Post-trip.** Does the site become a read-only memory (photos?) or get taken down?
 7. **SerpAPI booking links.** `resolveBookingUrl` sends a round-trip `departure_token`, which SerpAPI may not accept for booking options. If so, tapping a fare always falls back to the Kayak link. Check against SerpAPI's docs before relying on direct airline links.
@@ -237,7 +237,8 @@ A review then hardened the post-sign-in redirect, blocked cross-site calls to se
 
 Still open:
 
-- Flights, pools, payments and "Who's here" statuses are mock seed data until FL-2 and FN-5.
+- Flights and "Who's here" statuses are mock seed data until FL-2. Payments are real Stripe (test mode) once `STRIPE_SECRET_KEY` is set, mock without it.
+- A refunded payment still counts as paid (ADR 0010). Adjust the guest's share by hand if you refund someone.
 - A guest the organiser marks as driving (`arrivesBy: "drive"`) shows as driving to everyone until FL-2. On their own phone, adding a flight on `/me` replaces it. To change it for everyone, edit `src/lib/data/guests.ts`.
 - `src/lib/api/amadeus.ts` actually calls SerpAPI. The name is historical.
 
@@ -249,6 +250,6 @@ Still open:
 2. Google and Apple OAuth: add `<site>/api/auth/callback/google` and `<site>/api/auth/callback/apple` as redirect URIs.
 3. Hosting: the same variables in the production environment.
 4. Turso (ADR 0007), for FL-2, FL-8 sync, ME-2/ME-4 persistence and payment records.
-5. Stripe, for FN-4–6 and FN-10, plus a decision on fees (§10 Q3).
+5. Stripe: done in the Bach sandbox (test mode). For production: activate the account, create a live restricted key (`rk_live_…`, Checkout Sessions write), add a webhook endpoint at `https://<site>/api/stripe/webhook` for the four `checkout.session.*` events, and set `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` on the host.
 6. Real content: itinerary (TL-8), pools, shares, due dates and the groom's $0 override (FN-9). Decide first where it lives, since the repo is public (§10 Q8).
 7. A flight-data plan that covers future flights, for the FL-1 lookup and FL-4 live status (§10 Q1). Until then, guests enter flights by hand.

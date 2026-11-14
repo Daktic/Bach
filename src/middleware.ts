@@ -4,7 +4,8 @@ import { resolveCurrentGuest } from "~/lib/server/session";
 import { safeNextPath, signInUrlFor } from "~/lib/redirects";
 
 // AUTH-2: every page and server function requires a signed-in, invited guest.
-// Only the sign-in page, the Auth.js endpoints and static files are public.
+// Only the sign-in page, the Auth.js endpoints, the signed Stripe webhook
+// and static files are public.
 // Server functions also call requireGuest() themselves (defence in depth).
 
 const PUBLIC_PREFIXES = ["/api/auth/", "/_build/", "/assets/", "/icons/"];
@@ -13,6 +14,8 @@ const PUBLIC_FILES = new Set([
   "/manifest.webmanifest",
   "/robots.txt",
   "/apple-touch-icon.png",
+  // Stripe calls this without a Bach session; it checks Stripe's signature.
+  "/api/stripe/webhook",
 ]);
 
 function isPublicPath(pathname: string): boolean {
