@@ -83,8 +83,20 @@ export function ActivityDetails(props: Props) {
         fallback={<div class="h-24 w-full bg-gradient-to-br from-teal/40 to-orange/20" />}
       >
         {(src) => (
-          <div class="h-48 w-full overflow-hidden bg-gradient-to-br from-teal/40 to-orange/20">
-            <img src={src()} alt="" class="h-full w-full object-cover" />
+          // The whole artwork, uncropped (the vintage posters are tall), on a
+          // blurred, zoomed copy of itself so the sides aren't empty.
+          <div class="relative w-full overflow-hidden bg-charcoal/10">
+            <img
+              src={src()}
+              alt=""
+              aria-hidden="true"
+              class="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-xl"
+            />
+            <img
+              src={src()}
+              alt=""
+              class="relative mx-auto block max-h-[50vh] w-auto max-w-full object-contain shadow-lg"
+            />
           </div>
         )}
       </Show>

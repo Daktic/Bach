@@ -12,7 +12,7 @@ const json = (body: unknown, status = 200) =>
 
 async function load() {
   vi.resetModules(); // fresh caches and budgets for each test
-  return import("./amadeus");
+  return import("./serpapi");
 }
 
 const UNAVAILABLE = "Flight search isn't available right now. Try the links below.";

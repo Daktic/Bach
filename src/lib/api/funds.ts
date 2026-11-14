@@ -1,14 +1,15 @@
 "use server";
 
 import { getRequestEvent } from "solid-js/web";
-import { dollarsToCents } from "~/lib/card-fees";
+import { dollarsToCents, withCardFees } from "~/lib/card-fees";
 import { activityData } from "~/lib/data/activities";
 import { mockContributions, pools } from "~/lib/data/funds";
 import { guestIds } from "~/lib/data/guests";
-import { balanceDue, toPoolView } from "~/lib/funds";
+import { balanceDue, isValidOpenAmount, OPEN_AMOUNT_MAX, OPEN_AMOUNT_MIN, toPoolView } from "~/lib/funds";
 import { withForwardedOrigin } from "~/lib/server/forwarded";
 import { requireGuest } from "~/lib/server/session";
 import {
+  CHOICE_KEY,
   GUEST_KEY,
   POOL_KEY,
   contributionFromSession,
@@ -67,11 +68,17 @@ function siteOrigin(): string {
 }
 
 /**
- * FN-4: a Stripe Checkout page for the signed-in guest's unpaid balance on
- * one pool. Returns its URL; the browser goes there. The amount is always
- * worked out here on the server, never sent by the browser.
+ * FN-4: a Stripe Checkout page for the signed-in guest. For a pool with
+ * shares, it's their unpaid balance, worked out here on the server. For an
+ * open pool (food & drink fund), it's `chosenAmount` whole dollars, validated here,
+ * plus the card fee so the fund receives the full amount. Returns the URL;
+ * the browser goes there.
  */
-export async function startCheckout(poolId: string): Promise<{ url: string }> {
+export async function startCheckout(
+  poolId: string,
+  chosenAmount?: number,
+  choiceId?: string,
+): Promise<{ url: string }> {
   const { guest, email } = await requireGuest();
   const stripe = stripeClient();
   if (!stripe) throw new Error("Card payments aren't set up yet.");
@@ -79,11 +86,33 @@ export async function startCheckout(poolId: string): Promise<{ url: string }> {
   if (!pool) throw new Error("We couldn't find that pool.");
 
   try {
-    // Fresh numbers, so nobody is charged twice for a payment that just landed.
-    invalidatePayments();
-    const due = balanceDue(viewFor(pool, await listContributions(), guest.id));
-    if (due <= 0) throw new UserFacingError("You're already paid up for this one.");
-    const amount = dollarsToCents(due);
+    let charge: number;
+    let choice: { id: string; title: string } | null = null;
+    if (pool.choices) {
+      // Pick-your-group pool: the server checks the group and the price.
+      invalidatePayments();
+      const view = viewFor(pool, await listContributions(), guest.id);
+      const picked = pool.choices.find((c) => c.id === choiceId);
+      if (!picked) throw new UserFacingError("Pick a group first.");
+      if (view.myChoice && view.myChoice !== picked.id) {
+        const current = pool.choices.find((c) => c.id === view.myChoice)?.title ?? "another group";
+        throw new UserFacingError(`You've already paid for ${current}. Ask the organiser to switch you.`);
+      }
+      choice = picked;
+      charge = view.myChoice ? balanceDue(view) : withCardFees(picked.price);
+      if (charge <= 0) throw new UserFacingError("You're already paid up for this one.");
+    } else if (pool.open) {
+      if (!isValidOpenAmount(chosenAmount)) {
+        throw new UserFacingError(`Choose a whole-dollar amount from $${OPEN_AMOUNT_MIN} to $${OPEN_AMOUNT_MAX}.`);
+      }
+      charge = withCardFees(chosenAmount);
+    } else {
+      // Fresh numbers, so nobody is charged twice for a payment that just landed.
+      invalidatePayments();
+      charge = balanceDue(viewFor(pool, await listContributions(), guest.id));
+      if (charge <= 0) throw new UserFacingError("You're already paid up for this one.");
+    }
+    const amount = dollarsToCents(charge);
 
     // A second tap (or another tab) reuses the checkout page already open for
     // the same amount, rather than opening a second one that could be paid too.
@@ -91,6 +120,7 @@ export async function startCheckout(poolId: string): Promise<{ url: string }> {
       if (
         open.metadata?.[POOL_KEY] === pool.id &&
         open.metadata?.[GUEST_KEY] === guest.id &&
+        (open.metadata?.[CHOICE_KEY] ?? null) === (choice?.id ?? null) &&
         open.amount_total === amount &&
         open.url
       ) {
@@ -98,7 +128,8 @@ export async function startCheckout(poolId: string): Promise<{ url: string }> {
       }
     }
 
-    const metadata = { [POOL_KEY]: pool.id, [GUEST_KEY]: guest.id };
+    const metadata: Record<string, string> = { [POOL_KEY]: pool.id, [GUEST_KEY]: guest.id };
+    if (choice) metadata[CHOICE_KEY] = choice.id;
     const origin = siteOrigin();
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -108,10 +139,20 @@ export async function startCheckout(poolId: string): Promise<{ url: string }> {
           price_data: {
             currency: "usd",
             unit_amount: amount,
-            product_data: {
-              name: `${pool.title}: your share`,
-              description: "Includes the card processing fee, so the pool gets the full amount.",
-            },
+            product_data: choice
+              ? {
+                  name: `${pool.title}: ${choice.title}`,
+                  description: "Includes the card processing fee, so the pool gets the full amount.",
+                }
+              : pool.open
+              ? {
+                  name: `${pool.title}: chipping in $${chosenAmount}`,
+                  description: "Includes the card processing fee, so the fund gets the full amount.",
+                }
+              : {
+                  name: `${pool.title}: your share`,
+                  description: "Includes the card processing fee, so the pool gets the full amount.",
+                },
           },
         },
       ],

@@ -15,11 +15,11 @@ describe("flight status uses real instants", () => {
     );
     expect(byGuest).toEqual({
       chris: "landed",
-      sarah: "landed",
+      andrew: "landed",
       gberg: "in_air",
-      jake: "in_air",
-      mike: "boarding",
-      ryan: "upcoming",
+      avery: "in_air",
+      brett: "boarding",
+      jerid: "upcoming",
     });
   });
 

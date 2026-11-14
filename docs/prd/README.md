@@ -142,6 +142,8 @@ Shared costs (house, party bus, golf, dinner) each have a goal and a per-guest s
 | FN-8 | Each pool has an optional due date; overdue unpaid shares are highlighted to the guest | P1 | ✅ |
 | FN-9 | Shares can differ per guest (e.g. the groom's share is $0 and shows no Pay button) | P1 | ✅ via `shares.overrides` |
 | FN-10 | Apple Pay / Google Pay available in Checkout | P2 | ✅ Apple Pay shows in the sandbox; methods are managed in the Stripe dashboard |
+| FN-11 | An optional, choose-your-own-amount pool (the Food & Drink Fund): preset amounts ($10, $20, $50, $100) or any whole-dollar amount, as often as a guest likes. It has no share, goal or due date and doesn't count toward "paid up". | P2 | ✅ card fee added on top, so the fund gets the chosen amount |
+| FN-12 | A pick-your-group pool (golf on two courses): each guest picks a group (Cholla $310 or Desert Canyon Golf Club $110 a player) when they pay, and everyone can see how many players are in each group and how many still have to pick. Counts only, never names. | P1 | ✅ the payment records the group; switching groups after paying goes through the organiser |
 
 **Acceptance:** in Stripe test mode, a guest taps Pay on Party Bus and completes checkout with a test card. Within a few seconds their `/funds` header increments, the pool's raised amount goes up by their share, and the Pay button is gone. Replaying the same webhook event changes nothing. A guest never sees another guest's payment status.
 
@@ -240,7 +242,6 @@ Still open:
 - Flights and "Who's here" statuses are mock seed data until FL-2. Payments are real Stripe (test mode) once `STRIPE_SECRET_KEY` is set, mock without it.
 - A refunded payment still counts as paid (ADR 0010). Adjust the guest's share by hand if you refund someone.
 - A guest the organiser marks as driving (`arrivesBy: "drive"`) shows as driving to everyone until FL-2. On their own phone, adding a flight on `/me` replaces it. To change it for everyone, edit `src/lib/data/guests.ts`.
-- `src/lib/api/amadeus.ts` actually calls SerpAPI. The name is historical.
 
 ---
 

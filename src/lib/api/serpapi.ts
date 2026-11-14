@@ -1,7 +1,6 @@
 "use server";
 
-// Live fare search for /flights/book (FL-6). Despite the file name this uses
-// SerpAPI's Google Flights engine, not Amadeus.
+// Live fare search for /flights/book (FL-6), via SerpAPI's Google Flights engine.
 
 import { AIRPORTS, airportTimeZone } from "~/lib/airports";
 import { DEFAULT_INBOUND_DATE, DEFAULT_OUTBOUND_DATE, DESTINATION_AIRPORT } from "~/lib/config";

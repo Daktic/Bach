@@ -7,7 +7,8 @@ import { shareFor } from "../funds";
 // after giving the groom a $0 share without raising the others.
 describe("seeded pools", () => {
   it.each(pools.map((p) => [p.id, p] as const))("%s: shares cover the cost", (_id, pool) => {
-    const total = [...guestIds].reduce((sum, id) => sum + shareFor(pool, id), 0);
-    expect(total).toBeGreaterThanOrEqual(pool.cost);
+    // In cents, so $712.90 × 10 is exactly $7,129.
+    const cents = [...guestIds].reduce((sum, id) => sum + Math.round(shareFor(pool, id) * 100), 0);
+    expect(cents).toBeGreaterThanOrEqual(Math.round(pool.cost * 100));
   });
 });

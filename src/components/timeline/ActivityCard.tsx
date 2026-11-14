@@ -1,5 +1,6 @@
 import { Show } from "solid-js";
 import { formatActivityTime } from "~/lib/activity-time";
+import { sizedImage } from "~/lib/image-size";
 import type { ActivityView } from "~/lib/types";
 
 interface Props {
@@ -22,7 +23,7 @@ export function ActivityCard(props: Props) {
           when={props.activity.image}
           fallback={<div class="h-full w-full bg-gradient-to-br from-teal/40 to-orange/20" />}
         >
-          {(src) => <img src={src()} alt="" loading="lazy" class="h-full w-full object-cover" />}
+          {(src) => <img src={sizedImage(src(), 250)} alt="" loading="lazy" class="h-full w-full object-cover" />}
         </Show>
       </div>
 

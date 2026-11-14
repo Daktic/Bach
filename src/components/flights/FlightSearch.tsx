@@ -1,6 +1,6 @@
 import { createSignal, For, Show } from "solid-js";
-import { findNearbyAirports, resolveBookingUrl, searchFlightOffers } from "~/lib/api/amadeus";
-import type { FlightOffer, NearbyAirport, PriceInsights } from "~/lib/api/amadeus";
+import { findNearbyAirports, resolveBookingUrl, searchFlightOffers } from "~/lib/api/serpapi";
+import type { FlightOffer, NearbyAirport, PriceInsights } from "~/lib/api/serpapi";
 import { DEFAULT_INBOUND_DATE, DEFAULT_OUTBOUND_DATE, DESTINATION_AIRPORT } from "~/lib/config";
 import { SEARCH_AIRLINES } from "~/lib/flight-api";
 import { formatCalendarDate, formatWallClock } from "~/lib/zoned-time";

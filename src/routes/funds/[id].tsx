@@ -5,6 +5,8 @@ import { Dot } from "~/components/funds/Dot";
 import { DueBadge } from "~/components/funds/DueBadge";
 import { FundsMessage, LoadFailed, messageActionClass } from "~/components/funds/FundsMessage";
 import { ProgressBar } from "~/components/funds/FundingProgress";
+import { ChipInPanel } from "~/components/funds/ChipInPanel";
+import { GroupCounts, GroupPicker } from "~/components/funds/GroupPicker";
 import { PayPanel } from "~/components/funds/PayPanel";
 import { PoolHero } from "~/components/funds/PoolHero";
 import { amountToGo, formatMoney, fundedPercent, shareState } from "~/components/funds/pool-status";
@@ -85,7 +87,7 @@ function PoolDetail(props: { pool: PoolView }) {
   return (
     <article class="space-y-5">
       <div class="paper-card overflow-hidden rounded-2xl">
-        <PoolHero pool={props.pool} paid={state() === "paid"} class="h-44" />
+        <PoolHero pool={props.pool} paid={state() === "paid"} class="h-56" carousel />
       </div>
 
       {/* What the pool covers. A <div>, not a <header>: NavBar's is the
@@ -119,7 +121,20 @@ function PoolDetail(props: { pool: PoolView }) {
         </section>
       </Show>
 
+      {/* Optional, choose-your-own-amount pool (food & drink fund) */}
+      <Show when={props.pool.open}>
+        {(open) => (
+          <section class="paper-card rounded-xl px-4 py-4">
+            <SectionLabel>Chip in</SectionLabel>
+            <div class="mt-3">
+              <ChipInPanel pool={{ ...props.pool, open: open() }} />
+            </div>
+          </section>
+        )}
+      </Show>
+
       {/* The viewer's own share and the pay area. Never anyone else's. */}
+      <Show when={!props.pool.open}>
       <section class="paper-card rounded-xl px-4 py-4">
         <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <SectionLabel>What you owe</SectionLabel>
@@ -135,8 +150,20 @@ function PoolDetail(props: { pool: PoolView }) {
           </Show>
         </div>
 
-        <Show when={state() !== "none"}>
+        {/* Pick-your-group pool (golf): choose a group and pay in one go. */}
+        <Show when={state() === "pick" && props.pool.choices}>
+          {(choices) => (
+            <div class="mt-3">
+              <GroupPicker pool={{ ...props.pool, choices: choices() }} />
+            </div>
+          )}
+        </Show>
+
+        <Show when={state() !== "none" && state() !== "pick"}>
           <dl class="mt-3 space-y-2">
+            <Show when={props.pool.choices?.find((c) => c.id === props.pool.myChoice)}>
+              {(mine) => <SummaryRow label="Your group" value={mine().title} />}
+            </Show>
             <SummaryRow label="Your share" value={formatMoney(props.pool.myShare)} />
             <SummaryRow label="You've paid" value={formatMoney(props.pool.myPaid)} />
             <SummaryRow
@@ -147,12 +174,40 @@ function PoolDetail(props: { pool: PoolView }) {
           </dl>
         </Show>
 
-        <div class={state() === "none" ? "mt-3" : "mt-4 border-t border-charcoal/8 pt-4"}>
-          <PayPanel pool={props.pool} />
-        </div>
+        <Show when={state() !== "pick"}>
+          <div class={state() === "none" ? "mt-3" : "mt-4 border-t border-charcoal/8 pt-4"}>
+            <PayPanel pool={props.pool} />
+          </div>
+        </Show>
       </section>
+      </Show>
 
-      {/* Pool totals */}
+      {/* Pick-your-group pool: players per group (counts only, never names). */}
+      <Show when={props.pool.choices}>
+        {(choices) => (
+          <section class="paper-card space-y-3 rounded-xl px-4 py-4">
+            <SectionLabel>The groups</SectionLabel>
+            <GroupCounts choices={choices()} undecided={props.pool.undecided} />
+            <dl class="border-t border-charcoal/8 pt-3">
+              <SummaryRow label="Raised so far" value={formatMoney(props.pool.raisedAmount)} />
+            </dl>
+          </section>
+        )}
+      </Show>
+
+      {/* Pool totals. An open pool has no goal: just what's been raised. */}
+      <Show when={!props.pool.choices}>
+      <Show
+        when={!props.pool.open}
+        fallback={
+          <section class="paper-card rounded-xl px-4 py-4">
+            <SectionLabel>The fund</SectionLabel>
+            <dl class="mt-3">
+              <SummaryRow label="Raised so far" value={formatMoney(props.pool.raisedAmount)} />
+            </dl>
+          </section>
+        }
+      >
       <section class="paper-card space-y-3 rounded-xl px-4 py-4">
         <SectionLabel>The pool</SectionLabel>
         <dl class="space-y-2">
@@ -179,6 +234,8 @@ function PoolDetail(props: { pool: PoolView }) {
           </Show>
         </div>
       </section>
+      </Show>
+      </Show>
     </article>
   );
 }
@@ -204,7 +261,7 @@ function DetailSkeleton() {
   return (
     <div class="space-y-5">
       <span class="sr-only">Loading pool…</span>
-      <div aria-hidden="true" class="paper-card h-44 animate-pulse rounded-2xl" />
+      <div aria-hidden="true" class="paper-card h-56 animate-pulse rounded-2xl" />
       <div aria-hidden="true" class="h-7 w-2/3 animate-pulse rounded-lg bg-charcoal/10" />
       <div aria-hidden="true" class="paper-card h-48 animate-pulse rounded-xl" />
     </div>

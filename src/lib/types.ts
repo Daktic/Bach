@@ -29,7 +29,7 @@ export interface Activity {
   day: string;         // "YYYY-MM-DD"
   title: string;
   description: string;
-  image?: string;      // path relative to /public
+  image?: string;      // square art on the timeline card: a /public path or a full URL
   startTime?: string;  // "HH:MM" 24h, Arizona
   endTime?: string;    // "HH:MM" 24h, Arizona
   location?: string;   // free text, used for the "Open in Maps" link
@@ -124,14 +124,52 @@ export interface Pool {
   id: string;
   title: string;
   description: string;
-  placeholderGradient: string; // CSS gradient used as hero when no real image is set
-  image?: string;              // /public path — overrides gradient when present
+  placeholderGradient: string; // CSS gradient used as hero when there are no photos
+  /** Photos shown as a carousel on the pool page; the first one on its card. */
+  photos?: PoolPhoto[];
   cost: number;                // what the vendor charges, before card fees
   dueDate?: string;            // "YYYY-MM-DD", end of day Arizona time (FN-8)
   shares: {
     default: number;
     overrides?: Record<string, number>; // guestId → amount (e.g. groom → 0)
   };
+  /**
+   * An optional, choose-your-own-amount pool (e.g. a food & drink fund): no share,
+   * no goal, no due date. Guests chip in any amount, as often as they like.
+   * Set `cost: 0` and `shares: { default: 0 }` alongside it.
+   */
+  open?: { presets: number[] };
+  /**
+   * A pick-your-group pool (e.g. golf on two courses): each guest picks one
+   * choice when they pay, and owes that choice's price. Set `cost: 0` and
+   * `shares: { default: 0 }` alongside it.
+   */
+  choices?: PoolChoice[];
+}
+
+/** One group in a pick-your-group pool. `price` is per person, before card fees. */
+export interface PoolChoice {
+  id: string;
+  title: string;
+  /** Short name for tight spots, e.g. the card on /funds ("Cholla"). */
+  shortTitle: string;
+  price: number;
+  description?: string;
+}
+
+/** A pool photo. `src` is a path under /public (e.g. "/pools/accommodation/pool.jpg") or a full URL. */
+export interface PoolPhoto {
+  src: string;
+  /** Describes the photo for screen readers, e.g. "Backyard pool at night". */
+  alt: string;
+}
+
+/** A group in a pick-your-group pool, as guests see it. */
+export interface PoolChoiceView extends PoolChoice {
+  /** What a guest is charged for this group: price plus card fee. */
+  charge: number;
+  /** How many guests have paid for this group. Names are never shared. */
+  players: number;
 }
 
 /** One payment toward a pool: a paid Stripe Checkout Session, or mock data without Stripe. */
@@ -141,6 +179,8 @@ export interface Contribution {
   guestId: string;
   amount: number;
   paidAt: string; // ISO instant
+  /** For a pick-your-group pool: which group this payment was for. */
+  choiceId?: string;
 }
 
 /**
@@ -152,7 +192,7 @@ export interface PoolView {
   title: string;
   description: string;
   placeholderGradient: string;
-  image?: string;
+  photos: PoolPhoto[];
   /** The cost plus every guest's card fee: what the pool must raise. */
   targetAmount: number;
   raisedAmount: number;
@@ -164,6 +204,16 @@ export interface PoolView {
   myPaid: number;
   /** True when card payments are set up (Stripe configured). */
   canPay: boolean;
+  /** Set for a choose-your-own-amount pool: the preset amounts to offer. */
+  open: { presets: number[] } | null;
+  /** Set for a pick-your-group pool: each group, with how many have paid for it. */
+  choices: PoolChoiceView[] | null;
+  /** The group the viewer paid for, if any. */
+  myChoice: string | null;
+  /** A pick-your-group pool where the viewer hasn't picked (paid for) a group yet. */
+  needsChoice: boolean;
+  /** Pick-your-group pool: how many guests haven't picked a group yet. */
+  undecided: number;
   /** Activities on the timeline paid for by this pool (TL-5). */
   activities: { id: string; title: string }[];
 }

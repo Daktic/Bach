@@ -9,6 +9,7 @@ import type { Contribution } from "~/lib/types";
 
 export const POOL_KEY = "bach_pool";
 export const GUEST_KEY = "bach_guest";
+export const CHOICE_KEY = "bach_choice";
 
 let client: Stripe | null | undefined;
 
@@ -39,6 +40,7 @@ export function contributionFromSession(session: Stripe.Checkout.Session): Contr
     guestId,
     amount: session.amount_total / 100,
     paidAt: new Date(session.created * 1000).toISOString(),
+    ...(session.metadata?.[CHOICE_KEY] ? { choiceId: session.metadata[CHOICE_KEY] } : {}),
   };
 }
 

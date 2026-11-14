@@ -15,6 +15,7 @@ function view(overrides: Partial<PoolView> = {}): PoolView {
     title: "Party Bus",
     description: "",
     placeholderGradient: "",
+    photos: [],
     targetAmount: 800,
     raisedAmount: 320,
     dueDate: "2027-03-01",
@@ -22,6 +23,11 @@ function view(overrides: Partial<PoolView> = {}): PoolView {
     myCardFee: 0,
     myPaid: 0,
     canPay: false,
+    open: null,
+    choices: null,
+    myChoice: null,
+    needsChoice: false,
+    undecided: 0,
     activities: [],
     ...overrides,
   };
@@ -85,6 +91,8 @@ describe("paidUpSummary", () => {
       view({ id: "partial", myPaid: 40 }),
       view({ id: "unpaid" }),
       view({ id: "groom", myShare: 0 }),
+      // An optional food & drink fund never counts, even after chipping in.
+      view({ id: "drinks", myShare: 0, myPaid: 20.89, targetAmount: 0, dueDate: undefined, open: { presets: [10] } }),
     ]);
     expect(summary.counted.map((v) => v.id)).toEqual(["paid", "partial", "unpaid"]);
     expect(summary.paid).toBe(1);
@@ -102,5 +110,18 @@ describe("formatDueDate", () => {
   it("formats the calendar date as written", () => {
     expect(formatDueDate("2027-03-01")).toBe("Mar 1");
     expect(formatDueDate("2027-03-01", "long")).toBe("Mon, Mar 1, 2027");
+  });
+});
+
+describe("pick-your-group pools in the summary", () => {
+  it("counts a group still to pick as not paid, with nothing added to outstanding", () => {
+    const summary = paidUpSummary([
+      view({ id: "paid", myPaid: 80 }),
+      view({ id: "golf", myShare: 0, needsChoice: true }),
+    ]);
+    expect(summary.total).toBe(2);
+    expect(summary.paid).toBe(1);
+    expect(summary.outstanding).toBe(0);
+    expect(shareState(view({ myShare: 0, needsChoice: true }))).toBe("pick");
   });
 });

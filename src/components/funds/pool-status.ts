@@ -27,10 +27,16 @@ export function amountToGo(view: Pick<PoolView, "raisedAmount" | "targetAmount">
   return Math.max(0, view.targetAmount - view.raisedAmount);
 }
 
-/** Where the viewer stands in one pool. "none" is a $0 share (FN-9). */
-export type ShareState = "none" | "unpaid" | "partial" | "paid";
+/**
+ * Where the viewer stands in one pool. "none" is a $0 share (FN-9).
+ * "pick" is a pick-your-group pool where they haven't chosen a group yet.
+ */
+export type ShareState = "none" | "pick" | "unpaid" | "partial" | "paid";
 
-export function shareState(view: Pick<PoolView, "myShare" | "myPaid">): ShareState {
+export function shareState(
+  view: Pick<PoolView, "myShare" | "myPaid"> & { needsChoice?: boolean },
+): ShareState {
+  if (view.needsChoice) return "pick";
   if (view.myShare <= 0) return "none";
   if (isPaidUp(view)) return "paid";
   return view.myPaid > 0 ? "partial" : "unpaid";
@@ -47,9 +53,13 @@ export interface PaidUpSummary {
   outstanding: number;
 }
 
-/** FN-2: "paid up on N of M". $0 shares don't count toward either number (FN-9). */
+/**
+ * FN-2: "paid up on N of M". $0 shares don't count toward either number
+ * (FN-9); a group still to pick counts as not paid, with nothing yet in
+ * "outstanding" because its price depends on the pick.
+ */
 export function paidUpSummary(views: readonly PoolView[]): PaidUpSummary {
-  const counted = views.filter((v) => v.myShare > 0);
+  const counted = views.filter((v) => v.myShare > 0 || v.needsChoice);
   return {
     counted,
     paid: counted.filter((v) => isPaidUp(v)).length,

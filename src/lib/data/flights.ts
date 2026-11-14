@@ -9,11 +9,11 @@ import type { FlightDirection, FlightLeg } from "~/lib/types";
 // (-04:00), Chicago on CDT (-05:00) and LA on PDT (-07:00).
 //
 // ?mockDate=2027-04-08T14:00 (2 PM Arizona) gives a good spread of statuses:
-//   — Chris & Sarah: landed      (arrived before 14:00 Arizona)
+//   — Chris & Andrew: landed      (arrived before 14:00 Arizona)
 //   — Garrett:       in the air  (departed 13:30, arrives 15:45 → 33% progress)
-//   — Jake:          in the air  (departed 12:30 Arizona, arrives 16:00)
-//   — Mike:          boarding    (departs 14:25 Arizona)
-//   — Ryan:          upcoming    (departs 18:45 Arizona)
+//   — Avery:          in the air  (departed 12:30 Arizona, arrives 16:00)
+//   — Brett:          boarding    (departs 14:25 Arizona)
+//   — Jerid:          upcoming    (departs 18:45 Arizona)
 
 export interface SeedFlight extends FlightLeg {
   id: string;
@@ -35,7 +35,7 @@ export const seedFlights: SeedFlight[] = [
   },
   {
     id: "f2",
-    guestId: "sarah",
+    guestId: "andrew",
     direction: "in",
     flightNumber: "WN 4432",
     airline: "Southwest",
@@ -57,7 +57,7 @@ export const seedFlights: SeedFlight[] = [
   },
   {
     id: "f4",
-    guestId: "jake",
+    guestId: "avery",
     direction: "in",
     flightNumber: "DL 567",
     airline: "Delta",
@@ -68,7 +68,7 @@ export const seedFlights: SeedFlight[] = [
   },
   {
     id: "f5",
-    guestId: "mike",
+    guestId: "brett",
     direction: "in",
     flightNumber: "UA 892",
     airline: "United",
@@ -79,7 +79,7 @@ export const seedFlights: SeedFlight[] = [
   },
   {
     id: "f6",
-    guestId: "ryan",
+    guestId: "jerid",
     direction: "in",
     flightNumber: "B6 214",
     airline: "JetBlue",
