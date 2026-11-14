@@ -15,7 +15,7 @@ import type { FlightBoard, GuestFlight } from "~/lib/types";
  */
 export async function getFlightBoard(): Promise<FlightBoard> {
   await requireGuest();
-  const db = getDb();
+  const db = await getDb();
   const [entered, plans, profiles] = await Promise.all([allFlights(db), allTravelPlans(db), allProfiles(db)]);
 
   const nameOf = (id: string) => profiles.get(id)?.name ?? guests.find((g) => g.id === id)?.name ?? id;

@@ -12,13 +12,13 @@ import { guests } from "~/lib/data/guests";
 
 export async function getMyTravel(): Promise<GuestTravel> {
   const { guest } = await requireGuest();
-  return getTravel(getDb(), guest.id);
+  return getTravel((await getDb()), guest.id);
 }
 
 export async function saveMyTravel(travel: GuestTravel): Promise<GuestTravel> {
   const { guest } = await requireGuest();
   if (!travel || typeof travel !== "object") throw new Error("Nothing to save.");
-  return saveTravel(getDb(), guest.id, {
+  return saveTravel((await getDb()), guest.id, {
     inbound: travel.inbound ?? null,
     outbound: travel.outbound ?? null,
     driving: travel.driving === true,
@@ -27,13 +27,13 @@ export async function saveMyTravel(travel: GuestTravel): Promise<GuestTravel> {
 
 export async function setMyStatus(status: TravelStatus): Promise<void> {
   const { guest } = await requireGuest();
-  await setStatus(getDb(), guest.id, status);
+  await setStatus((await getDb()), guest.id, status);
 }
 
 /** Everyone's "Who's here" status, polled by the bar so phones stay in sync. */
 export async function getCrewStatuses(): Promise<Record<string, TravelStatus>> {
   await requireGuest();
-  const plans = await allTravelPlans(getDb());
+  const plans = await allTravelPlans((await getDb()));
   return Object.fromEntries(
     guests.map((g) => [g.id, plans.get(g.id)?.status ?? mockTravelStatus[g.id] ?? "home"]),
   );
