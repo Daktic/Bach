@@ -1,166 +1,221 @@
-import { For, onCleanup } from "solid-js";
+import { createAsync } from "@solidjs/router";
+import { createEffect, createMemo, createSignal, For, Match, onCleanup, onMount, Show, Switch } from "solid-js";
 import { createStore } from "solid-js/store";
-import { crew } from "~/lib/data/crew";
-import { mockGuestsWithoutFlight } from "~/lib/data/flights";
+import { hasNoArrivalPlan, nextTravelStatus } from "~/components/flights/flight-board";
+import { CarIcon, CheckIcon, HomeIcon, PlaneIcon } from "~/components/flights/icons";
+import { getCrew } from "~/lib/api/crew";
+import { loadMyProfile } from "~/lib/client/my-profile";
+import { EMPTY_TRAVEL, loadMyTravel, onMyTravelChange, type MyTravel } from "~/lib/client/my-travel";
+import { meQuery } from "~/lib/queries";
 import { MockTransport } from "~/lib/status/mock-transport";
-import type { TravelStatus } from "~/lib/status/types";
-import type { CrewMember } from "~/lib/data/crew";
+import type { StatusTransport } from "~/lib/status/types";
+import type { CrewMemberView, TravelStatus } from "~/lib/types";
 
-const noFlightIds = new Set(mockGuestsWithoutFlight.map(g => g.id));
+// One bus per page load; this module only runs in the browser (clientOnly).
+// Swap MockTransport for a server-backed transport to sync statuses (FL-8).
+const transport: StatusTransport = new MockTransport({ storageKey: "bach:travel-status" });
 
-// Module-level singleton — this module is only ever loaded client-side via
-// clientOnly(), so the transport is safe as a browser-only singleton.
-// Swap MockTransport for SSETransport / PusherTransport here when ready.
-const transport = new MockTransport();
-
-const STATUS_CYCLE: TravelStatus[] = ["home", "car", "plane", "arrived"];
-
+// Badge glyphs are charcoal: teal and orange are too light to read as small
+// marks on cream, so the colour goes on the ring and the badge border.
 const STATUS_CONFIG: Record<TravelStatus, { ring: string; badge: string; label: string }> = {
-  home:    { ring: "border-charcoal/25", badge: "border-charcoal/25 text-charcoal/40", label: "Home"    },
-  car:     { ring: "border-orange",      badge: "border-orange text-orange",           label: "Driving" },
-  plane:   { ring: "border-teal",        badge: "border-teal text-teal",               label: "Flying"  },
-  arrived: { ring: "border-teal",        badge: "border-teal text-teal",               label: "Here!"   },
+  home:    { ring: "border-charcoal/25", badge: "border-charcoal/40 bg-cream text-charcoal/70", label: "Home"    },
+  car:     { ring: "border-orange",      badge: "border-orange bg-cream text-charcoal",          label: "Driving" },
+  plane:   { ring: "border-teal",        badge: "border-teal bg-cream text-charcoal",            label: "Flying"  },
+  // Filled, so "Arrived" can't be mistaken for "Flying" at a glance.
+  arrived: { ring: "border-teal",        badge: "border-teal bg-teal text-charcoal",             label: "Arrived" },
 };
 
-function HomeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" class="w-2.5 h-2.5">
-      <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-    </svg>
-  );
-}
-
-function CarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" class="w-2.5 h-2.5">
-      <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z" />
-    </svg>
-  );
-}
-
-function PlaneIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" class="w-2.5 h-2.5">
-      <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" class="w-2.5 h-2.5">
-      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-    </svg>
-  );
-}
+const NO_FLIGHT = { ring: "border-charcoal/15", label: "No flight" };
 
 function StatusIcon(props: { status: TravelStatus }) {
-  switch (props.status) {
-    case "home":    return <HomeIcon />;
-    case "car":     return <CarIcon />;
-    case "plane":   return <PlaneIcon />;
-    case "arrived": return <CheckIcon />;
+  return (
+    <Switch>
+      <Match when={props.status === "home"}><HomeIcon class="h-3.5 w-3.5" /></Match>
+      <Match when={props.status === "car"}><CarIcon class="h-3.5 w-3.5" /></Match>
+      <Match when={props.status === "plane"}><PlaneIcon class="h-3.5 w-3.5" /></Match>
+      <Match when={props.status === "arrived"}><CheckIcon class="h-3.5 w-3.5" /></Match>
+    </Switch>
+  );
+}
+
+/**
+ * Decorative: the name and status are always written out next to it. A guest
+ * with no flight gets a faded circle, never faded text.
+ */
+function AvatarCircle(props: {
+  initials: string;
+  photo?: string | null;
+  status: TravelStatus;
+  noFlight: boolean;
+  showBadge: boolean;
+}) {
+  const [broken, setBroken] = createSignal(false);
+  const ring = () => (props.noFlight ? NO_FLIGHT.ring : STATUS_CONFIG[props.status].ring);
+
+  return (
+    <div class="relative" aria-hidden="true">
+      <div
+        class={`paper-card flex h-12 w-12 items-center justify-center overflow-hidden rounded-full
+                border-[3px] transition-colors duration-300 ${ring()} ${props.noFlight ? "opacity-40" : ""}`}
+      >
+        <Show
+          when={props.photo && !broken()}
+          fallback={<span class="select-none text-xs font-bold text-charcoal/75">{props.initials}</span>}
+        >
+          <img
+            src={props.photo!}
+            alt=""
+            referrerpolicy="no-referrer"
+            onError={() => setBroken(true)}
+            class="h-full w-full object-cover"
+          />
+        </Show>
+      </div>
+
+      <Show when={props.showBadge}>
+        <div
+          class={`absolute -bottom-[11px] left-1/2 flex h-[22px] w-[22px] -translate-x-1/2
+                  items-center justify-center rounded-full border-[1.5px]
+                  transition-colors duration-300 ${STATUS_CONFIG[props.status].badge}`}
+        >
+          <StatusIcon status={props.status} />
+        </div>
+      </Show>
+    </div>
+  );
+}
+
+/** Two short lines under an avatar: who, then their status in words (FL-7). */
+function Caption(props: { name: string; nameClass: string; status: string }) {
+  return (
+    <span class="flex w-full flex-col items-center gap-0.5 pt-1.5 text-[10px] leading-3">
+      <span class={`max-w-full truncate ${props.nameClass}`}>{props.name}</span>
+      <span class="max-w-full truncate text-charcoal/75">{props.status}</span>
+    </span>
+  );
+}
+
+function readMyTravel(guestId: string): MyTravel {
+  try {
+    return loadMyTravel(guestId);
+  } catch {
+    return EMPTY_TRAVEL; // storage blocked
   }
 }
 
-function AvatarBadge(props: {
-  member: CrewMember;
-  status: TravelStatus;
-  noFlight: boolean;
-  onClick: () => void;
-}) {
-  const cfg = () => props.noFlight
-    ? { ring: "border-charcoal/15", badge: "border-charcoal/15 text-charcoal/20", label: "No flight" }
-    : STATUS_CONFIG[props.status];
-
-  return (
-    <button
-      type="button"
-      onClick={props.onClick}
-      class={`flex flex-col items-center gap-2 focus:outline-none group transition-opacity
-              ${props.noFlight ? "opacity-35 pointer-events-none" : ""}`}
-      title={`${props.member.name} — ${cfg().label}`}
-      disabled={props.noFlight}
-    >
-      <div class="relative">
-        {/* Avatar ring */}
-        <div
-          class={`w-12 h-12 rounded-full border-[3px] ${cfg().ring}
-                  paper-card flex items-center justify-center
-                  transition-colors duration-300
-                  group-active:scale-95 transition-transform`}
-        >
-          <span class="text-xs font-bold text-charcoal/70 select-none">
-            {props.member.initials}
-          </span>
-        </div>
-
-        {/* Status badge — hidden for members with no flight */}
-        {!props.noFlight && (
-          <div
-            class={`absolute -bottom-[9px] left-1/2 -translate-x-1/2
-                    w-[18px] h-[18px] rounded-full
-                    border-[1.5px] ${cfg().badge}
-                    bg-cream flex items-center justify-center
-                    transition-colors duration-300`}
-          >
-            <StatusIcon status={props.status} />
-          </div>
-        )}
-      </div>
-
-      {/* Name */}
-      <span class="text-[10px] font-medium text-charcoal/50 leading-none pt-1">
-        {props.member.name}
-      </span>
-    </button>
-  );
-}
-
-function arrivedCount(statuses: Record<string, TravelStatus>) {
-  return Object.values(statuses).filter(s => s === "arrived").length;
-}
-
 export function CrewStatusBar() {
-  const initial = Object.fromEntries(crew.map(m => [m.id, m.initialStatus]));
-  const [statuses, setStatuses] = createStore<Record<string, TravelStatus>>(initial);
+  const crew = createAsync(() => getCrew());
+  const me = createAsync(() => meQuery());
 
-  const unsubscribe = transport.subscribe(({ guestId, status }) => {
-    setStatuses(guestId, status);
+  // Statuses heard on the transport since load; the server's value until then.
+  const [live, setLive] = createStore<Record<string, TravelStatus>>({});
+  const [myTravel, setMyTravel] = createSignal<MyTravel>(EMPTY_TRAVEL);
+  const [myPhoto, setMyPhoto] = createSignal<string | null>(null);
+
+  onMount(() => {
+    onCleanup(transport.subscribe(({ guestId, status }) => setLive(guestId, status)));
   });
-  onCleanup(unsubscribe);
 
-  function cycle(member: CrewMember) {
-    const current = statuses[member.id];
-    const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(current) + 1) % STATUS_CYCLE.length];
-    transport.publish(member.id, next);
+  // What the viewer saved on /me counts for their own avatar (FL-9).
+  createEffect(() => {
+    const viewer = me();
+    if (!viewer) return;
+    setMyTravel(readMyTravel(viewer.id));
+    try {
+      setMyPhoto(loadMyProfile(viewer.id).avatarDataUrl ?? viewer.image);
+    } catch {
+      setMyPhoto(viewer.image);
+    }
+    onCleanup(onMyTravelChange(viewer.id, () => setMyTravel(readMyTravel(viewer.id))));
+  });
+
+  const isMe = (m: CrewMemberView) => m.id === me()?.id;
+  const statusOf = (m: CrewMemberView): TravelStatus => live[m.id] ?? m.status;
+  const noFlight = (m: CrewMemberView) => hasNoArrivalPlan(m, isMe(m) ? myTravel() : undefined);
+
+  // The viewer first, so they can find their own avatar.
+  const members = createMemo(() => {
+    const list = crew() ?? [];
+    return [...list.filter(isMe), ...list.filter((m) => !isMe(m))];
+  });
+  const arrived = () => members().filter((m) => statusOf(m) === "arrived").length;
+  const meInCrew = () => members().some(isMe);
+
+  // FL-8: only the viewer's own status can change, and only from this button.
+  function cycleMyStatus(m: CrewMemberView) {
+    if (!isMe(m)) return;
+    void transport.publish(m.id, nextTravelStatus(statusOf(m)));
   }
 
   return (
     <div class="mx-auto max-w-lg px-4 pt-4">
       <div class="paper-card rounded-xl px-4 py-4">
-        <div class="flex items-center justify-between mb-4">
-          <p class="text-xs font-semibold uppercase tracking-widest text-charcoal/40">
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-charcoal/75">
             Who's here
-          </p>
-          <p class="text-xs font-semibold text-teal">
-            {arrivedCount(statuses)} / {crew.length} arrived
+          </h2>
+          <p class="flex items-center gap-1.5 text-xs font-semibold text-charcoal/80">
+            {/* A small copy of the "Arrived" badge. */}
+            <span class="flex h-4 w-4 items-center justify-center rounded-full bg-teal text-charcoal" aria-hidden="true">
+              <CheckIcon class="h-3 w-3" />
+            </span>
+            {arrived()} / {members().length} arrived
           </p>
         </div>
 
-        {/* Scrollable avatar row */}
-        <div class="overflow-x-auto -mx-1 px-1 pb-3">
-          <div class="flex gap-4 w-max">
-            <For each={crew}>{(member) =>
-              <AvatarBadge
-                member={member}
-                status={statuses[member.id]}
-                noFlight={noFlightIds.has(member.id)}
-                onClick={() => cycle(member)}
-              />
-            }</For>
-          </div>
+        {/* The row scrolls sideways inside the card, never the page. */}
+        <div class="relative -mx-1 overflow-x-auto px-1 pb-3">
+          <ul class="flex w-max gap-3">
+            <For each={members()}>
+              {(m) => {
+                const label = () => (noFlight(m) ? NO_FLIGHT.label : STATUS_CONFIG[statusOf(m)].label);
+                return (
+                  <li class="w-14">
+                    <Show
+                      when={isMe(m)}
+                      fallback={
+                        <div class="flex flex-col items-center gap-2" title={`${m.name}: ${label()}`}>
+                          <AvatarCircle
+                            initials={m.initials}
+                            status={statusOf(m)}
+                            noFlight={noFlight(m)}
+                            showBadge={!noFlight(m)}
+                          />
+                          <Caption name={m.name} nameClass="font-semibold text-charcoal/80" status={label()} />
+                        </div>
+                      }
+                    >
+                      <button
+                        type="button"
+                        onClick={() => cycleMyStatus(m)}
+                        aria-label={`Your status: ${STATUS_CONFIG[statusOf(m)].label}. Tap to change.`}
+                        class="flex min-h-11 w-full flex-col items-center gap-2 rounded-xl
+                               transition active:scale-95 focus-visible:outline-none
+                               focus-visible:ring-2 focus-visible:ring-charcoal"
+                      >
+                        {/* The viewer's badge always shows, so a tap has visible feedback. */}
+                        <AvatarCircle
+                          initials={m.initials}
+                          photo={myPhoto()}
+                          status={statusOf(m)}
+                          noFlight={noFlight(m)}
+                          showBadge
+                        />
+                        <Caption name="You" nameClass="font-bold text-charcoal" status={STATUS_CONFIG[statusOf(m)].label} />
+                      </button>
+                    </Show>
+                  </li>
+                );
+              }}
+            </For>
+          </ul>
         </div>
+
+        <Show when={meInCrew()}>
+          <p class="text-xs text-charcoal/75">
+            Tap your avatar to update your status. Only you see changes for now.
+          </p>
+        </Show>
       </div>
     </div>
   );

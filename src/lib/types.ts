@@ -1,31 +1,81 @@
+// ─── Guests ───────────────────────────────────────────────────────────────────
+
+export type ArrivalMode = "fly" | "drive";
+
+/** One invited guest. The roster is hand-maintained in src/lib/data/guests.ts. */
+export interface Guest {
+  id: string;
+  name: string;
+  initials: string;
+  /** Hand-seeded by the organiser for guests known to be driving (FL-9). */
+  arrivesBy?: ArrivalMode;
+}
+
+/** The signed-in guest, as returned by getMe(). */
+export interface Me {
+  id: string;
+  name: string;
+  initials: string;
+  email: string | null;
+  /** OAuth profile photo, when the provider gives one (Google does, Apple doesn't). */
+  image: string | null;
+}
+
+// ─── Timeline ─────────────────────────────────────────────────────────────────
+
+/** Activity times are Arizona wall times ("HH:MM", 24h). */
 export interface Activity {
   id: string;
   day: string;         // "YYYY-MM-DD"
   title: string;
   description: string;
   image?: string;      // path relative to /public
-  startTime?: string;  // "HH:MM" 24h
-  endTime?: string;
-  location?: string;
+  startTime?: string;  // "HH:MM" 24h, Arizona
+  endTime?: string;    // "HH:MM" 24h, Arizona
+  location?: string;   // free text, used for the "Open in Maps" link
   details?: string;    // extended prose for the dialog
+  poolId?: string;     // funding pool that pays for this activity (TL-5)
+}
+
+/** Activity as served to the client, with its pool's title joined in. */
+export interface ActivityView extends Activity {
+  pool?: { id: string; title: string };
 }
 
 export type DayStatus = "past" | "current" | "future";
 
+export interface TripDay {
+  date: string;        // "YYYY-MM-DD"
+  label: string;       // "Thursday · Apr 8"
+  status: DayStatus;
+  activities: ActivityView[];
+}
+
 // ─── Flights ──────────────────────────────────────────────────────────────────
 
 export type FlightStatus = "upcoming" | "boarding" | "in_air" | "landed" | "delayed";
+export type FlightDirection = "in" | "out";
 
-export interface GuestFlight {
-  id: string;
-  guestId: string;      // matches CrewMember.id — links flight to identity
-  guestName: string;
+/**
+ * A flight leg. Times are the airport's local wall time plus that airport's
+ * UTC offset, as the flight data gives them:
+ *   departsAt "2027-04-08T09:00:00-04:00"  (9 AM at JFK)
+ *   arrivesAt "2027-04-08T11:45:00-07:00"  (11:45 AM at PHX)
+ * Display uses the wall time in the string; status math uses the instant.
+ */
+export interface FlightLeg {
   flightNumber: string;
   airline: string;
   origin: string;       // IATA code e.g. "JFK"
   destination: string;  // IATA code e.g. "PHX"
-  departsAt: string;    // ISO local datetime "2027-04-08T09:00:00"
-  arrivesAt: string;    // ISO local datetime "2027-04-08T13:45:00"
+  departsAt: string;
+  arrivesAt: string;
+}
+
+export interface GuestFlight extends FlightLeg {
+  id: string;
+  guestId: string;      // matches Guest.id
+  guestName: string;
 }
 
 export interface GuestFlightWithStatus extends GuestFlight {
@@ -39,25 +89,74 @@ export interface GuestWithoutFlight {
   guestName: string;
 }
 
+/** Everything /flights needs, from getFlightBoard(). Inbound legs only. */
+export interface FlightBoard {
+  flights: GuestFlight[];
+  /** Guests on the roster with no inbound flight who aren't driving. */
+  noFlight: GuestWithoutFlight[];
+  /** Guests the organiser marked as driving in. */
+  driving: GuestWithoutFlight[];
+}
+
+// ─── Travel status ("Who's here") ─────────────────────────────────────────────
+
+export type TravelStatus = "home" | "car" | "plane" | "arrived";
+
+export interface CrewMemberView {
+  id: string;
+  name: string;
+  initials: string;
+  arrivesBy: ArrivalMode;
+  hasInboundFlight: boolean;
+  /** Mock until travel status is stored server-side (FL-8). */
+  status: TravelStatus;
+}
+
 // ─── Funds ────────────────────────────────────────────────────────────────────
 
-export interface FundingPool {
+/**
+ * A pooled expense. Hand-seeded in src/lib/data/funds.ts.
+ * Each guest's share is `shares.default` unless overridden per guest (FN-9).
+ */
+export interface Pool {
   id: string;
   title: string;
   description: string;
   placeholderGradient: string; // CSS gradient used as hero when no real image is set
   image?: string;              // /public path — overrides gradient when present
   targetAmount: number;
-  currentAmount: number;
-  myShare: number;             // what the current user owes
-  myContribution: number;      // what the current user has actually paid in (mock only)
+  dueDate?: string;            // "YYYY-MM-DD", end of day Arizona time (FN-8)
+  shares: {
+    default: number;
+    overrides?: Record<string, number>; // guestId → amount (e.g. groom → 0)
+  };
 }
 
-// ─── Trip ─────────────────────────────────────────────────────────────────────
-
-export interface TripDay {
-  date: string;        // "YYYY-MM-DD"
-  label: string;       // "Thursday · Apr 8"
-  status: DayStatus;
-  activities: Activity[];
+/** One payment toward a pool. Mock until Stripe webhooks record them (FN-5). */
+export interface Contribution {
+  id: string;
+  poolId: string;
+  guestId: string;
+  amount: number;
+  paidAt: string; // ISO instant
 }
+
+/**
+ * A pool as one guest sees it, from getMyPools()/getMyPool().
+ * Contains no other guest's share or payment status.
+ */
+export interface PoolView {
+  id: string;
+  title: string;
+  description: string;
+  placeholderGradient: string;
+  image?: string;
+  targetAmount: number;
+  raisedAmount: number;
+  dueDate?: string;
+  myShare: number;
+  myPaid: number;
+  /** Activities on the timeline paid for by this pool (TL-5). */
+  activities: { id: string; title: string }[];
+}
+

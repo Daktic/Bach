@@ -1,116 +1,70 @@
-import { Show } from "solid-js";
 import { A } from "@solidjs/router";
-import type { FundingPool } from "~/lib/types";
+import { Match, Show, Switch } from "solid-js";
+import { isOverdue } from "~/lib/funds";
+import type { PoolView } from "~/lib/types";
+import { DueBadge } from "./DueBadge";
+import { FundingProgress } from "./FundingProgress";
+import { PoolHero } from "./PoolHero";
+import { formatMoney, shareState } from "./pool-status";
 
 interface Props {
-  pool: FundingPool;
-}
-
-function PaidStamp() {
-  return (
-    <div class="absolute top-4 left-4 -rotate-[18deg] select-none pointer-events-none z-10">
-      {/* Outer stamp border */}
-      <div class="border-[3px] border-teal/80 rounded-[3px] px-3 py-1
-                  shadow-[inset_0_0_0_1.5px_rgba(98,216,199,0.25)]">
-        {/* Inner border via ring */}
-        <div class="border border-teal/30 rounded-[1px] px-1">
-          <span class="block text-[11px] font-black uppercase tracking-[0.3em] text-teal/85
-                       leading-tight">
-            Paid
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FundingBar(props: { pool: FundingPool }) {
-  const pct = () => Math.min(100, (props.pool.currentAmount / props.pool.targetAmount) * 100);
-  const isComplete = () => props.pool.currentAmount >= props.pool.targetAmount;
-  const remaining = () => props.pool.targetAmount - props.pool.currentAmount;
-
-  return (
-    <div class="px-4 pb-5 pt-3 border-t border-charcoal/8">
-      {/* Bar */}
-      <div class="relative h-2 rounded-full bg-charcoal/10 overflow-hidden">
-        <div
-          class={`absolute inset-y-0 left-0 rounded-full transition-all duration-500
-                  ${isComplete() ? "bg-teal" : "bg-orange"}`}
-          style={{ width: `${pct()}%` }}
-        />
-      </div>
-
-      {/* Amounts */}
-      <div class="flex justify-between items-baseline mt-2">
-        <span class="text-xs font-semibold text-charcoal/55">
-          ${props.pool.currentAmount.toLocaleString()} raised
-        </span>
-        <Show
-          when={isComplete()}
-          fallback={
-            <span class="text-xs font-bold text-orange">
-              ${remaining().toLocaleString()} to go
-            </span>
-          }
-        >
-          <span class="text-xs font-bold text-teal">Fully funded</span>
-        </Show>
-      </div>
-    </div>
-  );
+  pool: PoolView;
+  /** Set after mount; null during SSR and hydration so both renders match. */
+  now: Date | null;
 }
 
 export function FundingCard(props: Props) {
-  const isPaid = () => props.pool.myContribution >= props.pool.myShare;
+  const state = () => shareState(props.pool);
+  const overdue = () => {
+    const now = props.now;
+    return now !== null && isOverdue(props.pool, now);
+  };
 
   return (
     <A
-      href={`/funds/${props.pool.id}`}
-      class="block paper-card rounded-2xl overflow-hidden
-             hover:opacity-90 active:scale-[0.99] transition-all duration-150"
+      href={`/funds/${encodeURIComponent(props.pool.id)}`}
+      class="block overflow-hidden rounded-2xl paper-card
+             transition-all duration-150 hover:brightness-[1.02] active:scale-[0.99]"
     >
-      {/* Hero image / gradient area */}
-      <div class="relative h-48 overflow-hidden">
-        <Show
-          when={props.pool.image}
-          fallback={
-            <div
-              class="absolute inset-0"
-              style={{ background: props.pool.placeholderGradient }}
-            />
-          }
-        >
-          <img
-            src={props.pool.image}
-            alt={props.pool.title}
-            class="absolute inset-0 w-full h-full object-cover"
-          />
-        </Show>
+      <PoolHero pool={props.pool} paid={state() === "paid"} class="h-36" />
 
-        {/* Subtle vignette so text stamps read clearly */}
-        <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+      <div class="px-4 pb-3 pt-4">
+        <h2 class="break-words text-lg font-black leading-tight text-charcoal">{props.pool.title}</h2>
+        <p class="mt-1.5 break-words text-sm leading-relaxed text-charcoal/75">{props.pool.description}</p>
 
-        <Show when={isPaid()}>
-          <PaidStamp />
-        </Show>
+        {/* The viewer's own share. Never anyone else's. */}
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <p class="text-sm font-semibold text-charcoal/75">
+            <Switch>
+              <Match when={state() === "none"}>No share for you</Match>
+              <Match when={state() === "partial"}>
+                Paid <span class="font-black text-charcoal">{formatMoney(props.pool.myPaid)}</span>
+                {" "}of {formatMoney(props.pool.myShare)}
+              </Match>
+              <Match when={state() === "paid"}>
+                Your share <span class="font-black text-charcoal">{formatMoney(props.pool.myShare)}</span>
+                {" · "}<span class="font-bold text-charcoal">paid</span>
+              </Match>
+              <Match when={state() === "unpaid"}>
+                Your share <span class="font-black text-charcoal">{formatMoney(props.pool.myShare)}</span>
+              </Match>
+            </Switch>
+          </p>
+          <Show when={props.pool.dueDate}>
+            {(due) => (
+              <DueBadge
+                dueDate={due()}
+                overdue={overdue()}
+                muted={state() === "paid" || state() === "none"}
+              />
+            )}
+          </Show>
+        </div>
       </div>
 
-      {/* Title + description */}
-      <div class="px-4 pt-4 pb-3">
-        <h3 class="text-lg font-black text-charcoal leading-tight">
-          {props.pool.title}
-        </h3>
-        <p class="mt-1.5 text-sm text-charcoal/55 leading-relaxed">
-          {props.pool.description}
-        </p>
-
-        {/* Per-person share callout */}
-        <p class="mt-2.5 text-xs font-semibold text-charcoal/40">
-          Your share: <span class="text-charcoal/70">${props.pool.myShare}</span>
-        </p>
+      <div class="border-t border-charcoal/8 px-4 pb-5 pt-3">
+        <FundingProgress pool={props.pool} />
       </div>
-
-      <FundingBar pool={props.pool} />
     </A>
   );
 }

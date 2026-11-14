@@ -88,6 +88,14 @@ body {
   animation: ripple 2s ease-out infinite;
 }
 
+/* Reduce Motion: no endless rings. Each ring is the size of the dot it sits
+   behind, so without the animation it simply disappears. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-ripple {
+    animation: none;
+  }
+}
+
 dialog {
   margin: auto;
 }

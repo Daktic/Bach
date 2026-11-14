@@ -1,13 +1,17 @@
-import { Show } from "solid-js";
-import type { GuestFlightWithStatus } from "~/lib/types";
+import { Match, Show, Switch } from "solid-js";
+import type { FlightStatus, GuestFlightWithStatus } from "~/lib/types";
 import { formatTime } from "~/lib/flights";
+import { ArrivalTime, isActive, markerPercent, StatusDot } from "./FlightCard";
 import { FlightStatusBadge } from "./FlightStatusBadge";
+import type { MyArrival } from "./flight-board";
+import { formatDuration, formatFlightDate } from "./flight-format";
+import { CarIcon, PlaneIcon } from "./icons";
 
 interface Props {
-  flight: GuestFlightWithStatus | null;
+  arrival: MyArrival<GuestFlightWithStatus>;
 }
 
-const RING: Record<string, string> = {
+const RING: Record<FlightStatus, string> = {
   in_air:   "border-teal",
   boarding: "border-orange",
   upcoming: "border-charcoal/20",
@@ -15,120 +19,159 @@ const RING: Record<string, string> = {
   landed:   "border-charcoal/10",
 };
 
-function PlaneIcon(props: { class?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" class={props.class ?? "w-5 h-5"}>
-      <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
-    </svg>
-  );
-}
+const linkCls = `inline-flex min-h-11 items-center px-2 text-xs text-charcoal/75
+  underline underline-offset-2 hover:text-charcoal hover:decoration-teal transition-colors`;
 
 function FlightRoute(props: { flight: GuestFlightWithStatus }) {
-  const f = props.flight;
-  const isActive = () => f.status === "in_air" || f.status === "boarding";
-  const pct = () => Math.max(4, f.progressFraction * 100);
+  const f = () => props.flight;
 
   return (
     <div class="px-4 pb-5 pt-4">
       {/* Airport codes */}
-      <div class="flex justify-between items-baseline">
-        <p class="text-3xl font-black text-charcoal leading-none">{f.origin}</p>
-        <p class="text-3xl font-black text-charcoal leading-none">{f.destination}</p>
+      <div class="flex items-baseline justify-between">
+        <p class="text-3xl font-black leading-none text-charcoal">{f().origin}</p>
+        <p class="text-3xl font-black leading-none text-charcoal">{f().destination}</p>
       </div>
 
       {/* Track with plane */}
-      <div class="relative mt-4 h-5">
-        {/* Background line */}
-        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-charcoal/12" />
-        {/* Progress fill */}
+      <div class="relative mt-4 h-5" aria-hidden="true">
+        <div class="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-charcoal/12" />
         <div
-          class={`absolute top-1/2 left-0 -translate-y-1/2 h-px transition-all
-                  ${isActive() ? "bg-teal" : f.status === "landed" ? "bg-charcoal/25" : "bg-charcoal/10"}`}
-          style={{ width: `${f.progressFraction * 100}%` }}
+          class={`absolute left-0 top-1/2 h-px -translate-y-1/2 transition-all
+                  ${isActive(f()) ? "bg-teal" : f().status === "landed" ? "bg-charcoal/25" : "bg-charcoal/10"}`}
+          style={{ width: `${f().progressFraction * 100}%` }}
         />
-        {/* Plane marker */}
         <div
-          class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all"
-          style={{ left: `${pct()}%` }}
+          class="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all"
+          style={{ left: `${markerPercent(f())}%` }}
         >
-          <PlaneIcon class={`w-5 h-5 rotate-90 ${isActive() ? "text-teal" : "text-charcoal/25"}`} />
+          <PlaneIcon class={`h-5 w-5 rotate-90 ${isActive(f()) ? "text-teal" : "text-charcoal/25"}`} />
         </div>
       </div>
 
-      {/* Times */}
-      <div class="flex justify-between mt-2">
-        <p class="text-xs font-medium text-charcoal/50">{formatTime(f.departsAt)}</p>
-        <p class="text-xs font-medium text-charcoal/50">{formatTime(f.arrivesAt)}</p>
+      {/* Local times at each airport */}
+      <div class="mt-2 flex justify-between">
+        <p class="text-xs font-medium text-charcoal/75">{formatTime(f().departsAt)}</p>
+        <p class="text-xs font-medium text-charcoal/75"><ArrivalTime flight={f()} /></p>
       </div>
 
-      {/* Status lines */}
-      <Show when={f.status === "in_air" && f.minutesUntilArrival > 0}>
-        <p class="mt-3 text-xs font-semibold text-teal">
-          Lands in {f.minutesUntilArrival} min
-        </p>
-      </Show>
-      <Show when={f.status === "boarding"}>
-        <p class="mt-3 text-xs font-semibold text-orange">
-          Departing {formatTime(f.departsAt)}
-        </p>
-      </Show>
-      <Show when={f.status === "landed"}>
-        <p class="mt-3 text-xs font-semibold text-charcoal/40">Landed · Welcome!</p>
-      </Show>
+      {/* Status line */}
+      <Switch>
+        <Match when={f().status === "in_air" && f().minutesUntilArrival > 0}>
+          <p class="mt-3 flex items-center gap-1.5 text-xs font-semibold text-charcoal">
+            <StatusDot class="bg-teal" />
+            <span>Lands in {formatDuration(f().minutesUntilArrival)}</span>
+          </p>
+        </Match>
+        <Match when={f().status === "boarding"}>
+          <p class="mt-3 flex items-center gap-1.5 text-xs font-semibold text-charcoal">
+            <StatusDot class="bg-orange" />
+            <span>Departing {formatTime(f().departsAt)}</span>
+          </p>
+        </Match>
+        <Match when={f().status === "upcoming" || f().status === "delayed"}>
+          <p class="mt-3 text-xs font-medium text-charcoal/75">
+            Departs {formatFlightDate(f().departsAt)}
+          </p>
+        </Match>
+        <Match when={f().status === "landed"}>
+          <p class="mt-3 text-xs font-semibold text-charcoal/75">Landed · Welcome!</p>
+        </Match>
+      </Switch>
     </div>
   );
 }
 
 function NoFlight() {
   return (
-    <div class="flex flex-col items-center justify-center gap-5 py-10 px-6 text-center min-h-[172px]">
-      <div class="space-y-1">
-        <p class="text-sm font-bold text-charcoal/50">No flight details provided</p>
-        <a
-          href="/me#flight-section"
-          class="text-xs text-charcoal/35 hover:text-teal transition-colors underline underline-offset-2"
-        >
-          Have a flight number?
-        </a>
-      </div>
+    <div class="flex min-h-[172px] flex-col items-center justify-center gap-4 px-6 py-8 text-center">
+      <p class="text-sm font-bold text-charcoal/75">No flight details yet</p>
 
+      {/* Charcoal on orange only passes contrast as large text, hence 20px bold. */}
       <a
         href="/flights/book"
-        class="rounded-xl bg-orange px-6 py-2.5 text-sm font-bold text-cream
-               hover:bg-orange/90 active:scale-[0.97] transition-all"
+        class="inline-flex min-h-11 items-center justify-center rounded-xl bg-orange px-6
+               text-xl font-bold text-charcoal hover:bg-orange/90 active:scale-[0.97] transition-all"
       >
         Book Now
       </a>
+
+      <div class="-my-2 flex flex-wrap items-center justify-center">
+        <a href="/me#flight-section" class={linkCls}>Have a flight number?</a>
+        <span class="text-xs text-charcoal/25" aria-hidden="true">·</span>
+        <a href="/me#flight-section" class={linkCls}>Driving instead?</a>
+      </div>
     </div>
   );
 }
 
+function Driving() {
+  return (
+    <div class="flex min-h-[172px] flex-col items-center justify-center gap-3 px-6 py-8 text-center">
+      <span class="flex h-12 w-12 items-center justify-center rounded-full bg-orange/10 text-orange">
+        <CarIcon class="h-6 w-6" />
+      </span>
+      <div>
+        <p class="text-base font-black text-charcoal">You're driving in</p>
+        <p class="mt-0.5 text-xs text-charcoal/75">No flight needed. Safe travels!</p>
+      </div>
+      <a href="/me#flight-section" class={`-my-2 ${linkCls}`}>Flying instead?</a>
+    </div>
+  );
+}
+
+/** Honest about FL-2: what the guest saved on /me lives only in this browser for now. */
+function SavedLocallyNote() {
+  return (
+    <p class="border-t border-charcoal/8 px-4 py-2.5 text-xs text-charcoal/75">
+      Saved on this phone only. The crew can't see it until flights sync.
+    </p>
+  );
+}
+
 export function MyFlightCard(props: Props) {
-  const f = () => props.flight;
-  const ring = () => (f() ? (RING[f()!.status] ?? "border-charcoal/20") : "border-dashed border-charcoal/20");
+  const flight = () => (props.arrival.kind === "flight" ? props.arrival.flight : null);
+  const savedLocally = () => props.arrival.kind !== "none" && props.arrival.savedLocally;
+  const ring = () => {
+    const f = flight();
+    if (f) return RING[f.status];
+    return props.arrival.kind === "driving" ? "border-orange/40" : "border-dashed border-charcoal/20";
+  };
 
   return (
-    <div class={`paper-card rounded-xl border-2 ${ring()} overflow-hidden`}>
-      <Show when={f()} fallback={<NoFlight />} keyed>
-        {(flight) => (
-          <>
-            {/* Header */}
-            <div class="flex items-center justify-between gap-2 px-4 pt-4 pb-3 border-b border-charcoal/8">
-              <div>
-                <p class="text-[10px] font-bold uppercase tracking-widest text-charcoal/40">
-                  {flight.airline}
-                </p>
-                <p class="text-xl font-black text-charcoal leading-tight">
-                  {flight.flightNumber}
-                </p>
+    <div class={`paper-card overflow-hidden rounded-xl border-2 ${ring()}`}>
+      <Switch fallback={<NoFlight />}>
+        <Match when={flight()}>
+          {(f) => (
+            <>
+              {/* Header */}
+              <div class="flex items-center justify-between gap-2 border-b border-charcoal/8 px-4 pb-3 pt-4">
+                <div class="min-w-0">
+                  <p class="truncate text-[10px] font-bold uppercase tracking-widest text-charcoal/75">
+                    {f().airline}
+                  </p>
+                  <p class="truncate text-xl font-black leading-tight text-charcoal">
+                    {f().flightNumber}
+                  </p>
+                </div>
+                <FlightStatusBadge status={f().status} />
               </div>
-              <FlightStatusBadge status={flight.status} />
-            </div>
 
-            <FlightRoute flight={flight} />
-          </>
-        )}
-      </Show>
+              <FlightRoute flight={f()} />
+
+              <Show when={savedLocally()}>
+                <SavedLocallyNote />
+              </Show>
+            </>
+          )}
+        </Match>
+        <Match when={props.arrival.kind === "driving"}>
+          <Driving />
+          <Show when={savedLocally()}>
+            <SavedLocallyNote />
+          </Show>
+        </Match>
+      </Switch>
     </div>
   );
 }

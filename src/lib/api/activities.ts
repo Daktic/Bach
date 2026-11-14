@@ -1,28 +1,44 @@
 "use server";
 
+import { compareActivityTimes } from "~/lib/activity-time";
+import { TRIP_DAYS } from "~/lib/config";
 import { activityData } from "~/lib/data/activities";
+import { pools } from "~/lib/data/funds";
+import { requireGuest } from "~/lib/server/session";
+import type { Activity, ActivityView } from "~/lib/types";
+import { formatCalendarDate } from "~/lib/zoned-time";
 
-const TRIP_DAYS = [
-  "2027-04-08",
-  "2027-04-09",
-  "2027-04-10",
-  "2027-04-11",
-  "2027-04-12",
-] as const;
+// The single swap point for itinerary data (ADR 0006). Day status is computed
+// on the client so the dev `?mockDate` param flows through.
 
-function formatDayLabel(dateStr: string): string {
-  const d = new Date(`${dateStr}T12:00:00`);
-  return d.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-  });
+export interface ActivityDay {
+  date: string;
+  label: string;
+  activities: ActivityView[];
 }
 
-export async function getActivityDays() {
+function formatDayLabel(date: string): string {
+  return formatCalendarDate(date, { weekday: "long", month: "short", day: "numeric" });
+}
+
+function toView(a: Activity): ActivityView {
+  const pool = a.poolId ? pools.find((p) => p.id === a.poolId) : undefined;
+  return pool ? { ...a, pool: { id: pool.id, title: pool.title } } : { ...a };
+}
+
+export async function getActivityDays(): Promise<ActivityDay[]> {
+  await requireGuest();
   return TRIP_DAYS.map((date) => ({
     date,
     label: formatDayLabel(date),
-    activities: activityData.filter((a) => a.day === date),
+    activities: activityData.filter((a) => a.day === date).sort(compareActivityTimes).map(toView),
   }));
+}
+
+/** One activity for its shareable page (TL-7), or null if the id is unknown. */
+export async function getActivity(id: string): Promise<{ activity: ActivityView; dayLabel: string } | null> {
+  await requireGuest();
+  const activity = activityData.find((a) => a.id === id);
+  if (!activity) return null;
+  return { activity: toView(activity), dayLabel: formatDayLabel(activity.day) };
 }

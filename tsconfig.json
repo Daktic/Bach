@@ -10,10 +10,15 @@
     "allowJs": true,
     "strict": true,
     "noEmit": true,
-    "types": ["vite/client"],
+    "types": [
+      "vite/client"
+    ],
     "isolatedModules": true,
     "paths": {
-      "~/*": ["./src/*"]
-    }
+      "~/*": [
+        "./src/*"
+      ]
+    },
+    "skipLibCheck": true
   }
 }

@@ -1,4 +1,6 @@
-export type TravelStatus = "home" | "car" | "plane" | "arrived";
+import type { TravelStatus } from "~/lib/types";
+
+export type { TravelStatus };
 
 export interface StatusUpdate {
   guestId: string;

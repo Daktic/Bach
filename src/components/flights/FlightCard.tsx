@@ -1,78 +1,120 @@
-import { Show } from "solid-js";
+import { Match, Show, Switch } from "solid-js";
 import type { GuestFlightWithStatus } from "~/lib/types";
 import { formatTime } from "~/lib/flights";
 import { FlightStatusBadge } from "./FlightStatusBadge";
+import { arrivalDayOffset, formatDayOffset, formatDuration, formatFlightDate } from "./flight-format";
+import { PlaneIcon } from "./icons";
 
 interface Props {
   flight: GuestFlightWithStatus;
 }
 
-function RouteBar(props: { flight: GuestFlightWithStatus }) {
-  const f = props.flight;
-  const isActive = () => f.status === "in_air" || f.status === "boarding";
+// Times are each airport's local wall clock (departure at the origin, arrival
+// at the destination), straight from the flight data. Never the viewer's zone.
+
+/**
+ * Arrival time, marked "+1" when it lands on a later local day than it left,
+ * or "−1" when it crosses the date line and lands on an earlier one.
+ */
+export function ArrivalTime(props: { flight: GuestFlightWithStatus }) {
+  const days = () => arrivalDayOffset(props.flight.departsAt, props.flight.arrivesAt);
+  return (
+    <>
+      {formatTime(props.flight.arrivesAt)}
+      <Show when={days() !== 0}>
+        <span class="ml-0.5 align-super text-[9px] font-bold" title="Lands on a different day">
+          {formatDayOffset(days())}
+        </span>
+      </Show>
+    </>
+  );
+}
+
+/**
+ * Colour marker for a status line. Teal and orange are too light for small
+ * text on cream, so the line itself stays charcoal.
+ */
+export function StatusDot(props: { class: string }) {
+  return <span class={`h-1.5 w-1.5 shrink-0 rounded-full ${props.class}`} aria-hidden="true" />;
+}
+
+/** Plane marker position along the route, kept inside the track. */
+export function markerPercent(flight: GuestFlightWithStatus): number {
+  return Math.min(96, Math.max(4, flight.progressFraction * 100));
+}
+
+export const isActive = (flight: GuestFlightWithStatus) =>
+  flight.status === "in_air" || flight.status === "boarding";
+
+function RouteBar(props: Props) {
+  const f = () => props.flight;
 
   return (
     <div class="mt-3">
-      <div class="flex items-center justify-between text-xs text-charcoal/50 mb-1">
-        <span class="font-bold text-charcoal/70">{f.origin}</span>
-        <span class="font-bold text-charcoal/70">{f.destination}</span>
+      <div class="mb-1 flex items-center justify-between text-xs font-bold text-charcoal/80">
+        <span>{f().origin}</span>
+        <span>{f().destination}</span>
       </div>
-      <div class="relative h-1 w-full rounded-full bg-charcoal/10">
+      <div class="relative h-1 w-full rounded-full bg-charcoal/10" aria-hidden="true">
         {/* Filled progress track */}
         <div
-          class={`absolute inset-y-0 left-0 rounded-full transition-all ${isActive() ? "bg-teal" : f.status === "landed" ? "bg-charcoal/25" : "bg-charcoal/10"}`}
-          style={{ width: `${f.progressFraction * 100}%` }}
+          class={`absolute inset-y-0 left-0 rounded-full transition-all ${isActive(f()) ? "bg-teal" : f().status === "landed" ? "bg-charcoal/25" : "bg-charcoal/10"}`}
+          style={{ width: `${f().progressFraction * 100}%` }}
         />
         {/* Plane marker */}
         <div
-          class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all"
-          style={{ left: `${Math.max(4, f.progressFraction * 100)}%` }}
+          class="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all"
+          style={{ left: `${markerPercent(f())}%` }}
         >
-          <svg
-            width="12" height="12" viewBox="0 0 24 24" fill="currentColor"
-            class={`rotate-90 ${isActive() ? "text-teal" : "text-charcoal/30"}`}
-          >
-            <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-          </svg>
+          <PlaneIcon class={`h-3 w-3 rotate-90 ${isActive(f()) ? "text-teal" : "text-charcoal/30"}`} />
         </div>
       </div>
-      <div class="flex justify-between mt-1 text-xs text-charcoal/40">
-        <span>{formatTime(f.departsAt)}</span>
-        <span>{formatTime(f.arrivesAt)}</span>
+      <div class="mt-1 flex justify-between text-xs text-charcoal/75">
+        <span>{formatTime(f().departsAt)}</span>
+        <span><ArrivalTime flight={f()} /></span>
       </div>
     </div>
   );
 }
 
+// Landed flights are muted through the grey track and badge, never by fading
+// the card: names and times stay readable.
 export function FlightCard(props: Props) {
   const f = () => props.flight;
-  const muted = () => f().status === "landed";
 
   return (
-    <div class={`paper-card rounded-xl p-4 transition-opacity ${muted() ? "opacity-60" : ""}`}>
+    <div class="paper-card rounded-xl p-4">
       <div class="flex items-start justify-between gap-2">
-        <div>
-          <p class="text-xs font-medium uppercase tracking-widest text-charcoal/40">
+        <div class="min-w-0">
+          <p class="truncate text-xs font-medium uppercase tracking-widest text-charcoal/75">
             {f().airline} · {f().flightNumber}
           </p>
-          <p class="mt-0.5 text-base font-bold text-charcoal">{f().guestName}</p>
+          <p class="mt-0.5 truncate text-base font-bold text-charcoal">{f().guestName}</p>
         </div>
         <FlightStatusBadge status={f().status} />
       </div>
 
       <RouteBar flight={f()} />
 
-      <Show when={f().status === "in_air" && f().minutesUntilArrival > 0}>
-        <p class="mt-2 text-xs font-semibold text-teal">
-          Lands in {f().minutesUntilArrival} min
-        </p>
-      </Show>
-
-      <Show when={f().status === "boarding"}>
-        <p class="mt-2 text-xs font-semibold text-orange">
-          Departing {formatTime(f().departsAt)}
-        </p>
-      </Show>
+      <Switch>
+        <Match when={f().status === "in_air" && f().minutesUntilArrival > 0}>
+          <p class="mt-2 flex items-center gap-1.5 text-xs font-semibold text-charcoal">
+            <StatusDot class="bg-teal" />
+            <span>Lands in {formatDuration(f().minutesUntilArrival)}</span>
+          </p>
+        </Match>
+        <Match when={f().status === "boarding"}>
+          <p class="mt-2 flex items-center gap-1.5 text-xs font-semibold text-charcoal">
+            <StatusDot class="bg-orange" />
+            <span>Departing {formatTime(f().departsAt)}</span>
+          </p>
+        </Match>
+        <Match when={f().status === "upcoming" || f().status === "delayed"}>
+          <p class="mt-2 text-xs font-medium text-charcoal/75">
+            Departs {formatFlightDate(f().departsAt)}
+          </p>
+        </Match>
+      </Switch>
     </div>
   );
 }

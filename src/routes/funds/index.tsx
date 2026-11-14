@@ -1,63 +1,81 @@
-import { For, Show } from "solid-js";
+import { createAsync, query, type RouteDefinition } from "@solidjs/router";
+import { ErrorBoundary, For, Show, Suspense } from "solid-js";
 import { FundingCard } from "~/components/funds/FundingCard";
-import { mockFundingPools } from "~/lib/data/funds";
+import { FundsMessage, LoadFailed } from "~/components/funds/FundsMessage";
+import { PaidUpHeader } from "~/components/funds/PaidUpHeader";
+import { getMyPools } from "~/lib/api/funds";
+import { createNow } from "~/lib/client/clock";
+import type { PoolView } from "~/lib/types";
 
-function PaidUpHeader() {
-  const pools = mockFundingPools;
-  const paidCount = () => pools.filter(p => p.myContribution >= p.myShare).length;
-  const total = pools.length;
-  const allPaid = () => paidCount() === total;
+// Wrapped in query() so the route can preload it, a redirect from the server
+// is followed, and a future payment flow can revalidate the "myPools" key.
+const myPools = query(() => getMyPools(), "myPools");
+
+export const route = {
+  preload: () => myPools(),
+} satisfies RouteDefinition;
+
+function PoolList(props: { pools: PoolView[] }) {
+  // Time-based state (FN-8 overdue) starts after mount: SSR and hydration
+  // render the same markup, and the dev ?mockDate param is honoured. It keeps
+  // ticking, so a page left open past a due date turns overdue.
+  const now = createNow();
 
   return (
-    <div class="paper-card rounded-xl px-4 py-4 flex items-center justify-between gap-4">
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-widest text-charcoal/40">
-          Your status
-        </p>
-        <p class="mt-0.5 text-sm font-bold text-charcoal">
-          <Show
-            when={allPaid()}
-            fallback={
-              <>
-                Paid up on{" "}
-                <span class="text-teal">{paidCount()} of {total}</span>
-              </>
-            }
-          >
-            <span class="text-teal">All paid up</span> — you're good to go
-          </Show>
-        </p>
+    <Show
+      when={props.pools.length > 0}
+      fallback={
+        <FundsMessage
+          title="No pools yet"
+          body="Shared costs show up here once the organiser adds them."
+        />
+      }
+    >
+      <PaidUpHeader pools={props.pools} now={now()} />
+      <div class="space-y-5">
+        <For each={props.pools}>{(pool) => <FundingCard pool={pool} now={now()} />}</For>
       </div>
+    </Show>
+  );
+}
 
-      {/* Mini pip row */}
-      <div class="flex gap-1 shrink-0">
-        <For each={pools}>{(pool) => (
-          <div
-            class={`w-2.5 h-2.5 rounded-full transition-colors
-                    ${pool.myContribution >= pool.myShare ? "bg-teal" : "bg-charcoal/20"}`}
-            title={pool.title}
-          />
-        )}</For>
-      </div>
+function FundsSkeleton() {
+  return (
+    <div class="space-y-5">
+      <span class="sr-only">Loading funds…</span>
+      <div aria-hidden="true" class="paper-card h-20 animate-pulse rounded-xl" />
+      <div aria-hidden="true" class="paper-card h-80 animate-pulse rounded-2xl" />
+      <div aria-hidden="true" class="paper-card h-80 animate-pulse rounded-2xl" />
     </div>
   );
 }
 
 export default function FundsPage() {
+  const pools = createAsync(() => myPools());
+
   return (
-    <div class="mx-auto max-w-lg px-4 py-6 space-y-5">
+    <div class="mx-auto max-w-lg space-y-5 px-4 py-6">
       <div>
         <h1 class="text-2xl font-black text-charcoal">Funds</h1>
-        <p class="mt-1 text-sm text-charcoal/50">
-          Pooled expenses. Contribute your portion directly.
+        <p class="mt-1 text-sm text-charcoal/75">
+          Shared costs for the weekend, and your share of each.
         </p>
       </div>
 
-      <PaidUpHeader />
-
-      <For each={mockFundingPools}>
-        {(pool) => <FundingCard pool={pool} />}
-      </For>
+      <ErrorBoundary
+        fallback={(err) => {
+          console.error("[funds] couldn't show pools", err);
+          return <LoadFailed />;
+        }}
+      >
+        <Suspense fallback={<FundsSkeleton />}>
+          {/* An expired session throws (401) into the boundary; an empty
+              response is treated as a failure too. */}
+          <Show when={pools()} fallback={<LoadFailed />}>
+            {(list) => <PoolList pools={list()} />}
+          </Show>
+        </Suspense>
+      </ErrorBoundary>
     </div>
   );
 }

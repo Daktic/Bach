@@ -1,15 +1,8 @@
-import { clientOnly } from "@solidjs/start";
-import { Suspense } from "solid-js";
+import { SignInPage } from "~/components/auth/SignInPage";
 
-// clientOnly — signIn() from @auth/solid-start/client needs the browser
-const SignInPage = clientOnly(() =>
-  import("~/components/auth/SignInPage").then(m => ({ default: m.SignInPage }))
-);
-
+// Server-rendered so the buttons and any error message show before JS loads.
+// SignInPage only touches browser storage in onMount and calls signIn() on tap,
+// and Solid replays taps made before hydration.
 export default function SignInRoute() {
-  return (
-    <Suspense>
-      <SignInPage />
-    </Suspense>
-  );
+  return <SignInPage />;
 }

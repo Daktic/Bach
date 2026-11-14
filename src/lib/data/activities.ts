@@ -1,4 +1,9 @@
+import "server-only";
 import type { Activity } from "~/lib/types";
+
+// The itinerary, hand-edited (TL-8). Times are Arizona wall times ("HH:MM").
+// `location` powers the "Open in Maps" link (TL-4); `poolId` links an activity
+// to the funding pool that pays for it (TL-5).
 
 export const activityData: Activity[] = [
   // Thursday Apr 8 — Arrival
@@ -8,6 +13,8 @@ export const activityData: Activity[] = [
     title: "Arrive & Check In",
     description: "Flights land, grab the keys to the Airbnb, and get settled in.",
     startTime: "15:00",
+    location: "Old Town Scottsdale, AZ",
+    poolId: "accommodation",
   },
   {
     id: "thu-welcome",
@@ -38,6 +45,8 @@ export const activityData: Activity[] = [
     title: "Group Dinner",
     description: "TBD",
     startTime: "19:00",
+    location: "Bourbon Steak, Scottsdale, AZ",
+    poolId: "dinner",
   },
 
   // Saturday Apr 10

@@ -73,7 +73,30 @@ See [`docs/adr/`](docs/adr/README.md) for the reasoning behind key decisions.
 
 ```bash
 pnpm install
+cp .env.example .env.local   # then fill it in, see below
 pnpm dev
+```
+
+### Configuration
+
+Copy [`.env.example`](.env.example) to `.env.local`. This repo is public, so real values only ever go in `.env.local` (git-ignored) and in the hosting environment.
+
+| Variable | Needed for |
+|----------|-----------|
+| `AUTH_SECRET` | Signing session cookies. Generate one with `openssl rand -base64 32`. |
+| `GUEST_EMAILS` | The invite list: `guestId=email` pairs, comma separated (guest ids are in `src/lib/data/guests.ts`). List a guest twice to allow two emails. Empty means nobody can sign in. See [ADR 0009](docs/adr/0009-invite-only-auth-with-env-guest-list.md). |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in. The redirect URI is `<site>/api/auth/callback/google`. |
+| `APPLE_ID`, `APPLE_SECRET` | Apple sign-in. The redirect URI is `<site>/api/auth/callback/apple`. |
+| `SERP_API_KEY` | Live fare search on `/flights/book`. |
+| `AVIATIONSTACK_API_KEY` | Flight-number lookup on `/me`. Its `/flights` endpoint only sees today's and past flights, so lookups months ahead come back empty. Manual entry works without it. |
+
+In dev, `?mockDate=2027-04-10` or `?mockDate=2027-04-08T14:00` (read as Arizona time) shows any page as it will look on that day.
+
+### Checks
+
+```bash
+pnpm test        # unit tests (Vitest): time zones, invite list, flights, funds
+pnpm typecheck   # TypeScript
 ```
 
 Build for production:

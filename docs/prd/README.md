@@ -62,14 +62,14 @@ OAuth proves *who* someone is. The guest list decides *whether they get in*. Bot
 
 | ID | Requirement | Pri | State |
 |----|-------------|-----|-------|
-| AUTH-1 | Guests sign in with Google or Apple | P0 | ✅ UI and Auth.js config |
-| AUTH-2 | Every route except `/sign-in` and `/api/auth/*` requires a session; unauthenticated requests redirect to `/sign-in` | P0 | ⬜ `requireSession()` exists but no route calls it |
-| AUTH-3 | **Invite-only sign-in.** The OAuth email must match an entry on the hand-maintained guest list, checked server-side in Auth.js's `signIn` callback. No match → no session is issued and the user sees "you're not on the list". There is no self-sign-up path. | P0 | ⬜ |
-| AUTH-4 | The session resolves to that guest's record (id, name), and that identity drives "me" everywhere (profile, my flight, my share) instead of the hardcoded `gberg` | P0 | ⬜ |
-| AUTH-5 | A guest who uses a different email for Google and Apple can have both listed against one guest record | P1 | ⬜ |
-| AUTH-6 | Guests can sign out | P1 | ⬜ |
-| AUTH-7 | After sign-in, land on the timeline (`/`) | P1 | 🟡 currently redirects to `/flights` |
-| AUTH-8 | Remember last-used provider and highlight it on return | P2 | ⬜ |
+| AUTH-1 | Guests sign in with Google or Apple | P0 | ✅ UI and Auth.js config (`basePath` fixed so sign-in completes) |
+| AUTH-2 | Every route except `/sign-in` and `/api/auth/*` requires a session; unauthenticated requests redirect to `/sign-in` | P0 | ✅ middleware, plus `requireGuest()` in every server function |
+| AUTH-3 | **Invite-only sign-in.** The OAuth email must match an entry on the hand-maintained guest list, checked server-side in Auth.js's `signIn` callback. No match → no session is issued and the user sees "you're not on the list". There is no self-sign-up path. | P0 | ✅ needs `GUEST_EMAILS` set ([ADR 0009](../adr/0009-invite-only-auth-with-env-guest-list.md)) |
+| AUTH-4 | The session resolves to that guest's record (id, name), and that identity drives "me" everywhere (profile, my flight, my share) instead of the hardcoded `gberg` | P0 | ✅ |
+| AUTH-5 | A guest who uses a different email for Google and Apple can have both listed against one guest record | P1 | ✅ list the guest once per email in `GUEST_EMAILS` |
+| AUTH-6 | Guests can sign out | P1 | ✅ drawer footer and `/me` |
+| AUTH-7 | After sign-in, land on the timeline (`/`) | P1 | ✅ or back to the page they first asked for |
+| AUTH-8 | Remember last-used provider and highlight it on return | P2 | ✅ |
 
 ### Acceptance criteria
 
@@ -89,12 +89,12 @@ Guests see the whole weekend as a vertical timeline grouped by day, with today h
 | ID | Requirement | Pri | State |
 |----|-------------|-----|-------|
 | TL-1 | `/` shows all trip days (Apr 8–12) with their activities in time order | P0 | ✅ |
-| TL-2 | Days are marked past / current / future; the page scrolls to today during the trip | P0 | ✅ |
-| TL-3 | Tapping an activity opens its details: title, time range, location, description | P0 | ✅ dialog |
-| TL-4 | Activity details include an "Open in Maps" link (and optionally an embed) when a location is set | P1 | ⬜ |
-| TL-5 | Activities link to their funding pool when one exists | P2 | ⬜ |
+| TL-2 | Days are marked past / current / future; the page scrolls to today during the trip | P0 | ✅ day boundaries in Arizona time |
+| TL-3 | Tapping an activity opens its details: title, time range, location, description | P0 | ✅ dialog and `/activity/[id]` |
+| TL-4 | Activity details include an "Open in Maps" link (and optionally an embed) when a location is set | P1 | ✅ link only, no embed (an embed needs an API key) |
+| TL-5 | Activities link to their funding pool when one exists | P2 | ✅ both directions (two mock links for now) |
 | TL-6 | Before departure, a countdown dialog shows once per browser session | P1 | ✅ |
-| TL-7 | `/activity/[id]` works as a shareable deep link to one activity, or is removed | P2 | 🟡 stub route |
+| TL-7 | `/activity/[id]` works as a shareable deep link to one activity, or is removed | P2 | ✅ with a Share button |
 | TL-8 | Real itinerary content replaces the TBD placeholders | P0 | 🟡 content task, hand-edited in `src/lib/data/activities.ts` |
 
 **Acceptance:** with `?mockDate=2027-04-10`, Thu/Fri are past, Sat is current and on screen at load, Sun/Mon are future. Each activity with a `location` offers a way to open it in the phone's map app.
@@ -105,15 +105,15 @@ Guests see who has booked, who's in the air, and who's landed. Guests without a 
 
 | ID | Requirement | Pri | State |
 |----|-------------|-----|-------|
-| FL-1 | A guest can enter their inbound (and optional outbound) flight by flight number + date, with auto-filled details from a lookup | P0 | 🟡 works, saved to `localStorage` only |
-| FL-2 | Flights are stored server-side so every guest sees everyone's flights | P0 | ⬜ (ADR 0007) |
-| FL-3 | `/flights` lists every guest's inbound flight, sorted: in the air, boarding, upcoming, landed | P0 | 🟡 mock data |
-| FL-4 | Flight status reflects reality on travel day (delays, actual landing), falling back to schedule-based status if the API fails | P1 | 🟡 schedule-based only |
-| FL-5 | Guests with no flight are listed separately with a "book a flight" call to action | P0 | 🟡 mock list |
-| FL-6 | `/flights/book` searches live fares from the guest's nearest airport to PHX for the trip dates and links out to book | P1 | ✅ SerpAPI |
-| FL-7 | "Who's here" bar shows each guest's travel status (home / driving / flying / arrived) | P1 | 🟡 mock transport; anyone can tap anyone |
-| FL-8 | A guest can only change their *own* travel status; status syncs to other guests without a full reload | P1 | ⬜ |
-| FL-9 | Guests who drive instead of fly can say so and are not shown as "no flight" | P1 | ⬜ |
+| FL-1 | A guest can enter their inbound (and optional outbound) flight by flight number + date, with auto-filled details from a lookup | P0 | 🟡 lookup plus manual entry; saved on the guest's own device until FL-2. The lookup can't see future flights yet (§10 Q1) |
+| FL-2 | Flights are stored server-side so every guest sees everyone's flights | P0 | ⬜ needs Turso (ADR 0007) |
+| FL-3 | `/flights` lists every guest's inbound flight, sorted: in the air, boarding, upcoming, landed | P0 | 🟡 works on mock flights plus the viewer's own entry |
+| FL-4 | Flight status reflects reality on travel day (delays, actual landing), falling back to schedule-based status if the API fails | P1 | 🟡 schedule-based only; provider undecided (§10 Q1) |
+| FL-5 | Guests with no flight are listed separately with a "book a flight" call to action | P0 | ✅ on mock data until FL-2 |
+| FL-6 | `/flights/book` searches live fares from the guest's nearest airport to PHX for the trip dates and links out to book | P1 | ✅ SerpAPI, cached, per-guest hourly limit, sign-in required |
+| FL-7 | "Who's here" bar shows each guest's travel status (home / driving / flying / arrived) | P1 | 🟡 mock statuses |
+| FL-8 | A guest can only change their *own* travel status; status syncs to other guests without a full reload | P1 | 🟡 own status only ✅; syncing needs server storage |
+| FL-9 | Guests who drive instead of fly can say so and are not shown as "no flight" | P2 | 🟡 drivers the organiser seeds show for everyone; a guest's own toggle stays on their device until FL-2 |
 
 **Acceptance:** guest A enters a flight on their phone; guest B refreshes `/flights` on another phone and sees it. Tapping guest B's avatar as guest A does nothing.
 
@@ -121,10 +121,10 @@ Guests see who has booked, who's in the air, and who's landed. Guests without a 
 
 | ID | Requirement | Pri | State |
 |----|-------------|-----|-------|
-| ME-1 | Shows the signed-in guest's name and avatar (defaulting to the OAuth photo) | P0 | 🟡 hardcoded user |
-| ME-2 | Guest can edit display name and upload a photo | P1 | 🟡 `localStorage` only |
-| ME-3 | Guest manages their own flights here (see FL-1) | P0 | 🟡 |
-| ME-4 | Optional fields useful to the organiser: phone number, dietary needs, shirt size | P2 | ⬜ |
+| ME-1 | Shows the signed-in guest's name and avatar (defaulting to the OAuth photo) | P0 | ✅ |
+| ME-2 | Guest can edit display name and upload a photo | P1 | 🟡 saved on the guest's own device only |
+| ME-3 | Guest manages their own flights here (see FL-1) | P0 | ✅ (device-only until FL-2) |
+| ME-4 | Optional fields useful to the organiser: phone number, dietary needs, shirt size | P2 | ⬜ only useful once it's stored server-side |
 
 ### 6.4 Pooled funds
 
@@ -132,15 +132,15 @@ Shared costs (house, party bus, golf, dinner) each have a goal and a per-guest s
 
 | ID | Requirement | Pri | State |
 |----|-------------|-----|-------|
-| FN-1 | `/funds` lists every pool with title, goal, amount raised, progress bar, and the guest's own share | P0 | 🟡 mock data |
-| FN-2 | Header shows "paid up on N of M" for the signed-in guest | P0 | 🟡 mock |
-| FN-3 | Pool detail page explains what the pool covers and shows a **Pay $X** button for the guest's unpaid balance | P0 | 🟡 "Payment details coming soon" |
-| FN-4 | **Pay** opens Stripe Checkout (hosted) for that guest's share of that pool. The checkout session carries the guest id and pool id so the payment can be matched. | P0 | ⬜ |
-| FN-5 | A Stripe webhook records each successful payment as a contribution. Raised totals and "paid up" status are derived from these records. Duplicate webhook deliveries don't double-count. | P0 | ⬜ |
-| FN-6 | After paying, the guest returns to the pool page and sees it marked paid (allowing a few seconds for the webhook) | P0 | ⬜ |
-| FN-7 | Pools, per-guest shares and contributions are stored server-side; pools and shares are seeded by hand | P0 | ⬜ (ADR 0007 defers the table) |
-| FN-8 | Each pool has an optional due date; overdue unpaid shares are highlighted to the guest | P1 | ⬜ |
-| FN-9 | Shares can differ per guest (e.g. the groom's share is $0 and shows no Pay button) | P1 | ⬜ |
+| FN-1 | `/funds` lists every pool with title, goal, amount raised, progress bar, and the guest's own share | P0 | 🟡 built on mock pools and payments |
+| FN-2 | Header shows "paid up on N of M" for the signed-in guest | P0 | ✅ (mock payments) |
+| FN-3 | Pool detail page explains what the pool covers and shows a **Pay $X** button for the guest's unpaid balance | P0 | 🟡 built; Pay button disabled until FN-4 |
+| FN-4 | **Pay** opens Stripe Checkout (hosted) for that guest's share of that pool. The checkout session carries the guest id and pool id so the payment can be matched. | P0 | ⬜ needs Stripe |
+| FN-5 | A Stripe webhook records each successful payment as a contribution. Raised totals and "paid up" status are derived from these records. Duplicate webhook deliveries don't double-count. | P0 | ⬜ needs Stripe and storage |
+| FN-6 | After paying, the guest returns to the pool page and sees it marked paid (allowing a few seconds for the webhook) | P0 | ⬜ needs Stripe |
+| FN-7 | Pools, per-guest shares and contributions are stored server-side; pools and shares are seeded by hand | P0 | 🟡 pools and shares hand-seeded in `src/lib/data/funds.ts`; payments need Stripe and storage |
+| FN-8 | Each pool has an optional due date; overdue unpaid shares are highlighted to the guest | P1 | ✅ |
+| FN-9 | Shares can differ per guest (e.g. the groom's share is $0 and shows no Pay button) | P1 | ✅ via `shares.overrides` |
 | FN-10 | Apple Pay / Google Pay available in Checkout | P2 | ⬜ Stripe setting |
 
 **Acceptance:** in Stripe test mode, a guest taps Pay on Party Bus and completes checkout with a test card. Within a few seconds their `/funds` header increments, the pool's raised amount goes up by their share, and the Pay button is gone. Replaying the same webhook event changes nothing. A guest never sees another guest's payment status.
@@ -150,8 +150,8 @@ Shared costs (house, party bus, golf, dinner) each have a goal and a per-guest s
 | ID | Requirement | Pri | State |
 |----|-------------|-----|-------|
 | NAV-1 | Hamburger drawer with Timeline, Flights, Funds, Me | P0 | ✅ |
-| NAV-2 | Sign-out lives in the drawer footer | P1 | ⬜ placeholder |
-| NAV-3 | Installable as a PWA (manifest + icon) | P2 | ⬜ |
+| NAV-2 | Sign-out lives in the drawer footer | P1 | ✅ |
+| NAV-3 | Installable as a PWA (manifest + icon) | P2 | ✅ manifest and icons; not yet tested on a real phone |
 
 ---
 
@@ -163,13 +163,17 @@ Shared costs (house, party bus, golf, dinner) each have a goal and a per-guest s
 
 **Privacy.** All data is behind invite-only sign-in (AUTH-3). Per-guest payment status is visible only to that guest; the organiser uses the Stripe dashboard. API keys and secrets (SerpAPI, Aviationstack, OAuth, Stripe secret and webhook signing secret) stay server-side. The webhook verifies Stripe's signature before trusting any payload.
 
-**Time zone.** All trip times are Phoenix local (MST, no DST). Displayed times must not shift based on the viewer's phone time zone.
+**Time zones.** Displayed times never shift based on the viewer's phone time zone.
+
+- **Trip times** (itinerary, countdown, day boundaries) are Arizona time (MST, no DST).
+- **Flight times** show what the flight data gives us, which is normally the airport's local time: departure in the origin's time zone, arrival in the destination's. A 9:00 departure from JFK reads 9:00, not 6:00.
+- Flight times are stored with their UTC offset (or airport time zone) so status and progress (FL-3, FL-4) are computed on real instants, not on bare local times.
 
 **Reliability on travel day.** If a third-party flight API is down or over quota, `/flights` still renders using scheduled times.
 
-**Cost.** Third-party API spend for the whole trip stays under ~$20 (Stripe fees aside). Cache flight lookups and searches rather than calling on every render.
+**Cost.** Third-party API spend for the whole trip stays under ~$20 (Stripe fees aside). Cache flight lookups and searches rather than calling on every render. Beyond the cache, each guest gets at most 20 fare searches or booking links and 10 flight lookups an hour. The server fixes the fare search's destination and dates, and lookups only accept dates within a week of the trip.
 
-**Dev ergonomics.** `?mockDate=YYYY-MM-DD` keeps working in dev for every time-dependent view. Stripe runs in test mode outside production.
+**Dev ergonomics.** `?mockDate=YYYY-MM-DD` (or `YYYY-MM-DDTHH:MM`, read as Arizona time) keeps working in dev for every time-dependent view. Stripe runs in test mode outside production.
 
 ---
 
@@ -190,6 +194,8 @@ contributions  id, pool_id, guest_id, amount, stripe_session_id (unique), paid_a
 
 `currentAmount` and "my contribution" become derived values from `contributions`, not stored fields. The unique `stripe_session_id` makes webhook handling idempotent.
 
+**Until Turso is set up:** `guests` lives in `src/lib/data/guests.ts`. `guest_emails` is the `GUEST_EMAILS` environment variable, because the repo is public ([ADR 0009](../adr/0009-invite-only-auth-with-env-guest-list.md)). `pools` and `pool_shares` live in `src/lib/data/funds.ts`. `flights`, `travel_status` and `contributions` are mock seed data, and each guest's own entries stay in their browser. The pages read all of it through the server functions in `src/lib/api/`, so swapping in the database only touches that layer and the data files.
+
 ---
 
 ## 9. Milestones
@@ -199,10 +205,12 @@ Dates work back from the trip. Adjust as plans firm up.
 | Milestone | Target | Scope |
 |-----------|--------|-------|
 | **M1 — Locked down** | Dec 2026 | AUTH-2–4, AUTH-6–7, NAV-2; Turso wired up with `guests` + `guest_emails` |
-| **M2 — Flights for real** | Jan 2027 | FL-1–3, FL-5, FL-9, ME-1–3. Send invites; this is when guests start booking. |
+| **M2 — Flights for real** | Jan 2027 | FL-1–3, FL-5, ME-1–3. Send invites; this is when guests start booking. |
 | **M3 — Money** | Feb 2027 | FN-1–7 with Stripe Checkout + webhook. Collect deposits before vendor deadlines. |
-| **M4 — Travel-day polish** | Mar 2027 | FL-4, FL-7–8, TL-4, FN-8–9, AUTH-5, final itinerary content (TL-8) |
+| **M4 — Travel-day polish** | Mar 2027 | FL-4, FL-7–8, TL-4, FN-8–9, AUTH-5, FL-9, final itinerary content (TL-8) |
 | **Trip** | Apr 8–12, 2027 | Freeze. Bug fixes only. |
+
+**Status (2026-11-14):** everything that doesn't need outside setup is built and has been through a security, time-zone and accessibility review: M1 apart from Turso, the M2 flows on mock data, the M3 screens without payments, and most of M4. What's left is setup (§12) plus FL-2, FL-4, FN-4–7 and ME-4.
 
 **Booking deadline for guests:** TBD (suggest ~8 weeks out, mid-Feb 2027).
 
@@ -210,21 +218,37 @@ Dates work back from the trip. Adjust as plans firm up.
 
 ## 10. Open questions
 
-1. **Flight status provider.** ADR 0008 picks AeroDataBox, but the code uses Aviationstack for lookup and SerpAPI for fare search. Which is the live-status source? Supersede or update ADR 0008 to match.
-2. **Auth library.** ADR 0007 says an auth library is "TBD"; the code already uses Auth.js with JWT sessions. Worth an ADR recording Auth.js + the guest-list `signIn` check (AUTH-3), and that no database adapter is needed for sessions.
+1. **Flight status provider.** ADR 0008 picks AeroDataBox, but the code uses Aviationstack for lookup and SerpAPI for fare search. Which is the live-status source? Supersede or update ADR 0008 to match. Aviationstack's `/flights` endpoint, which the lookup uses, only covers today's and past flights, so it can't find an April 2027 flight ahead of time. The form then says the lookup isn't available and offers manual entry. Looking up future flights needs Aviationstack's future-schedules endpoint (paid plans) or another provider.
+2. ~~**Auth library.**~~ Answered by [ADR 0009](../adr/0009-invite-only-auth-with-env-guest-list.md): Auth.js with JWT sessions, an invite list in `GUEST_EMAILS`, no database adapter.
 3. **Stripe fees.** Stripe takes ~2.9% + 30¢ per card payment. Do guests pay a little extra to cover it, or does the pool absorb it? This changes what the Pay button charges.
 4. **Payment storage.** Should Stripe and its webhook get an ADR (Checkout vs. Payment Links, how payments are matched to guests)?
 5. **Realtime transport** for "Who's here" (FL-8): polling every 30 s is probably enough for 10 people. SSE only if that feels laggy.
 6. **Post-trip.** Does the site become a read-only memory (photos?) or get taken down?
+7. **SerpAPI booking links.** `resolveBookingUrl` sends a round-trip `departure_token`, which SerpAPI may not accept for booking options. If so, tapping a fare always falls back to the Kayak link. Check against SerpAPI's docs before relying on direct airline links.
+8. **Real content in a public repo.** Everything in `src/lib/data/` (itinerary, pools, shares, guest names) can be read on GitHub, whatever the sign-in gate does. Before real addresses, times and amounts go in (TL-8, FN-7), either make the repo private or move that data to Turso (§12 step 4).
 
 ---
 
-## 11. Known inconsistencies in the current code
+## 11. Known gaps in the current code
 
-Not requirements, but worth fixing as the above lands:
+Fixed in this pass: sign-in now lands on `/`, per-guest fund values moved into shares and payments, "Who's here" only lets you change your own status, `/activity/[id]` is a real page, `package.json` is named `bach`, and flight times carry their airport's offset. Also fixed: two bugs that blocked sign-in (Auth.js `basePath`) and flight lookup (API key name).
 
-- Sign-in redirects to `/flights`; ADR 0005 says the timeline is home.
-- `FundingPool.myShare` / `myContribution` are per-user values on a shared object; they belong in `pool_shares` / `contributions`.
-- `CrewStatusBar` lets anyone cycle anyone's status.
-- `/activity/[id]` renders a placeholder.
-- `package.json` is still named `example-bare`.
+A review then hardened the post-sign-in redirect, blocked cross-site calls to server functions, and stopped Back after sign-out from showing a cached signed-in page. It also capped paid API calls per guest, and made the flight lookup tell "no such flight" apart from "lookup not available". Unknown URLs now get a real 404 page, every page has its own title, and text contrast meets WCAG AA on the paper background.
+
+Still open:
+
+- Flights, pools, payments and "Who's here" statuses are mock seed data until FL-2 and FN-5.
+- A guest the organiser marks as driving (`arrivesBy: "drive"`) shows as driving to everyone until FL-2. On their own phone, adding a flight on `/me` replaces it. To change it for everyone, edit `src/lib/data/guests.ts`.
+- `src/lib/api/amadeus.ts` actually calls SerpAPI. The name is historical.
+
+---
+
+## 12. Setup still needed (outside the code)
+
+1. `.env.local`: set `AUTH_SECRET` (currently empty) and `GUEST_EMAILS` (see `.env.example`). Without them, nobody can sign in, including you.
+2. Google and Apple OAuth: add `<site>/api/auth/callback/google` and `<site>/api/auth/callback/apple` as redirect URIs.
+3. Hosting: the same variables in the production environment.
+4. Turso (ADR 0007), for FL-2, FL-8 sync, ME-2/ME-4 persistence and payment records.
+5. Stripe, for FN-4–6 and FN-10, plus a decision on fees (§10 Q3).
+6. Real content: itinerary (TL-8), pools, shares, due dates and the groom's $0 override (FN-9). Decide first where it lives, since the repo is public (§10 Q8).
+7. A flight-data plan that covers future flights, for the FL-1 lookup and FL-4 live status (§10 Q1). Until then, guests enter flights by hand.
