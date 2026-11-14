@@ -2,6 +2,7 @@ import "server-only";
 import { SolidAuth, type SolidAuthConfig } from "@auth/solid-start";
 import Google from "@auth/core/providers/google";
 import Apple from "@auth/core/providers/apple";
+import { withForwardedOrigin } from "~/lib/server/forwarded";
 import { isInvitedEmail } from "~/lib/server/guest-list";
 
 export const authConfig: SolidAuthConfig = {
@@ -60,4 +61,16 @@ export const authConfig: SolidAuthConfig = {
   trustHost: true,
 };
 
-export const { GET, POST } = SolidAuth(authConfig);
+const handlers = SolidAuth(authConfig);
+
+// In dev, a request through ngrok reaches Auth.js with its public https URL
+// restored, so callbacks (Apple needs https) and cookies use the tunnel's
+// address. See ~/lib/server/forwarded.
+type AuthEvent = Parameters<typeof handlers.GET>[0];
+const viaTunnel = (event: AuthEvent): AuthEvent => {
+  const request = withForwardedOrigin(event.request);
+  return request === event.request ? event : Object.assign(Object.create(event), { request });
+};
+
+export const GET = (event: AuthEvent) => handlers.GET(viaTunnel(event));
+export const POST = (event: AuthEvent) => handlers.POST(viaTunnel(event));

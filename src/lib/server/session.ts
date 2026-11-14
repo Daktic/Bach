@@ -5,6 +5,7 @@ import { redirect } from "@solidjs/router";
 import { getRequestEvent } from "solid-js/web";
 import type { RequestEvent } from "solid-js/web";
 import { authConfig } from "~/lib/auth";
+import { withForwardedOrigin } from "~/lib/server/forwarded";
 import { findGuestByEmail } from "~/lib/server/guest-list";
 import type { Guest } from "~/lib/types";
 
@@ -59,7 +60,7 @@ export async function resolveCurrentGuest(
 
   let current: CurrentGuest | null = null;
   try {
-    const { session, setCookies } = await readSession(event.request);
+    const { session, setCookies } = await readSession(withForwardedOrigin(event.request));
     const email = session?.user?.email ?? null;
     const guest = findGuestByEmail(email);
     if (guest && email) {
