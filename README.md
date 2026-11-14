@@ -6,14 +6,14 @@ A private bachelor party website for invited guests. Built with SolidStart (SSR)
 
 ## Objectives
 
-These are goals and intentions, not hard feature requirements. Priorities will shift as the project evolves.
+These are goals and intentions. Detailed requirements, priorities and acceptance criteria live in [`docs/prd/`](docs/prd/README.md).
 
 ### Access & Authentication
 
-- **Password gate** — guests enter a shared password once to unlock the site; after that they move straight to OAuth
-- **OAuth sign-in** — Google is the primary provider; additional providers (e.g. Apple, GitHub) are aspirational
-- **Persistent sessions** — last-used sign-in method is stored in localStorage so returning guests skip the gate and land straight in
-- **Admin role** — at least one user (the organiser) has elevated access to see private information across all guests
+- **OAuth sign-in** — Google and Apple
+- **Invite-only** — the OAuth email must match the hand-maintained guest list; anyone else is turned away and no session is issued. There is no self-sign-up.
+- **Persistent sessions** — returning guests land straight in; the last-used provider is remembered
+- **No admin role** — every signed-in user is a guest. The organiser maintains the guest list, itinerary and pools by hand.
 
 ### Trip Timeline
 
@@ -30,8 +30,9 @@ These are goals and intentions, not hard feature requirements. Priorities will s
 ### Pooled Funds
 
 - Expenses (e.g. Airbnb, activities) can have a funding goal attached
-- Guests see a live progress bar toward the goal
-- Admin can see contribution status per guest — who has paid, who hasn't
+- Guests see a live progress bar toward the goal and their own share
+- Guests pay their share through Stripe Checkout; a Stripe webhook records the payment automatically
+- The organiser checks who has paid in the Stripe dashboard
 - May be tied to individual activities or surfaced as a separate section
 
 ### Design System
@@ -49,7 +50,7 @@ These are goals and intentions, not hard feature requirements. Priorities will s
 | Cream | `#f9f7db` | Default surface / background |
 | Charcoal | `#454346` | Body text, borders |
 
-**Viewport:** Mobile-first. Every feature must work well on a phone screen. Desktop is a nice-to-have.
+**Viewport:** Mobile-first. The phone is the product; every screen is designed at 375 px first. Larger screens get the same single-column layout, centred.
 
 ---
 
