@@ -11,20 +11,19 @@ import type { Guest } from "~/lib/types";
 // Only server code imports this file. Pages get guest data through the
 // server functions in src/lib/api/, which require a signed-in guest.
 
-// Initials show on avatars. Without last names yet, they're the first two
-// letters of the name; update them when you know the last names.
+// Initials (first and last name) show on avatars until a guest uploads a photo.
 // `arrivesBy: "drive"` marks someone you know is driving in (FL-9).
 export const guests: Guest[] = [
   { id: "gberg",  name: "Garrett", initials: "GB" },
-  { id: "andrew", name: "Andrew",  initials: "AN" },
-  { id: "avery",  name: "Avery",   initials: "AV" },
-  { id: "brett",  name: "Brett",   initials: "BR" },
-  { id: "chris",  name: "Chris",   initials: "CH" },
-  { id: "jerid",  name: "Jerid",   initials: "JE" },
-  { id: "kyle",   name: "Kyle",    initials: "KY" },
-  { id: "matt",   name: "Matt",    initials: "MA" },
-  { id: "phil",   name: "Phil",    initials: "PH" },
-  { id: "scott",  name: "Scott",   initials: "SC" },
+  { id: "andrew", name: "Andrew",  initials: "AM" },
+  { id: "avery",  name: "Avery",   initials: "AF" },
+  { id: "brett",  name: "Brett",   initials: "BH" },
+  { id: "chris",  name: "Chris",   initials: "CW" },
+  { id: "jerid",  name: "Jerid",   initials: "JC" },
+  { id: "kyle",   name: "Kyle",    initials: "KB" },
+  { id: "matt",   name: "Matt",    initials: "MD" },
+  { id: "phil",   name: "Phil",    initials: "PD" },
+  { id: "scott",  name: "Scott",   initials: "SK" },
 ];
 
 export const guestIds: ReadonlySet<string> = new Set(guests.map((g) => g.id));
