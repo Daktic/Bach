@@ -250,7 +250,7 @@ function FoundFlight(props: {
         {(code) => (
           <p class="text-xs text-charcoal/80">
             Heads up: this flight {props.direction === "in" ? "lands at" : "leaves from"} {code()}, not{" "}
-            {DESTINATION_AIRPORT}.
+            {DESTINATION_AIRPORT}. If it's a connection, add your other flight next.
           </p>
         )}
       </Show>

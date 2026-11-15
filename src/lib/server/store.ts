@@ -1,6 +1,7 @@
 import "server-only";
-import { eq } from "drizzle-orm";
-import { cleanLeg, isValidLeg } from "~/lib/flight-leg";
+import { asc, eq } from "drizzle-orm";
+import { cleanLeg, isValidLeg, MAX_LEGS } from "~/lib/flight-leg";
+import { sortLegs } from "~/lib/flights";
 import type { FlightLeg, TravelStatus } from "~/lib/types";
 import type { Db } from "./db";
 import { flights, guestProfiles, guestTravel } from "./schema";
@@ -8,9 +9,10 @@ import { flights, guestProfiles, guestTravel } from "./schema";
 // Reads and writes for what guests enter (ADR 0007). Every write is for one
 // guest id, which callers take from the session, never from the browser.
 
+/** A guest's trip: each direction's legs in departure order (connections are extra legs). */
 export interface GuestTravel {
-  inbound: FlightLeg | null;
-  outbound: FlightLeg | null;
+  inbound: FlightLeg[];
+  outbound: FlightLeg[];
   driving: boolean;
 }
 
@@ -36,29 +38,34 @@ const toLeg = (row: typeof flights.$inferSelect): FlightLeg => ({
 
 export async function getTravel(db: Db, guestId: string): Promise<GuestTravel> {
   const [legs, plan] = await Promise.all([
-    db.select().from(flights).where(eq(flights.guestId, guestId)),
+    db.select().from(flights).where(eq(flights.guestId, guestId)).orderBy(asc(flights.leg)),
     db.select().from(guestTravel).where(eq(guestTravel.guestId, guestId)),
   ]);
-  const inbound = legs.find((l) => l.direction === "in");
-  const outbound = legs.find((l) => l.direction === "out");
   return {
-    inbound: inbound ? toLeg(inbound) : null,
-    outbound: outbound ? toLeg(outbound) : null,
+    inbound: legs.filter((l) => l.direction === "in").map(toLeg),
+    outbound: legs.filter((l) => l.direction === "out").map(toLeg),
     driving: plan[0]?.driving ?? false,
   };
 }
 
 /** Replaces the guest's flights and driving flag. Invalid legs are rejected. */
 export async function saveTravel(db: Db, guestId: string, travel: GuestTravel): Promise<GuestTravel> {
-  for (const leg of [travel.inbound, travel.outbound]) {
-    if (leg !== null && !isValidLeg(leg)) throw new Error("That flight isn't complete.");
+  const directions = [
+    ["in", travel.inbound],
+    ["out", travel.outbound],
+  ] as const;
+  for (const [, legs] of directions) {
+    if (!Array.isArray(legs)) throw new Error("That trip isn't complete.");
+    if (legs.length > MAX_LEGS) throw new Error(`Up to ${MAX_LEGS} flights each way.`);
+    if (!legs.every(isValidLeg)) throw new Error("That flight isn't complete.");
   }
   const at = now();
+  const rows = directions.flatMap(([direction, legs]) =>
+    sortLegs(legs.map(cleanLeg)).map((leg, i) => ({ guestId, direction, leg: i, ...leg, updatedAt: at })),
+  );
   await db.batch([
     db.delete(flights).where(eq(flights.guestId, guestId)),
-    ...([["in", travel.inbound], ["out", travel.outbound]] as const)
-      .filter((entry): entry is readonly ["in" | "out", FlightLeg] => entry[1] !== null)
-      .map(([direction, leg]) => db.insert(flights).values({ guestId, direction, ...cleanLeg(leg), updatedAt: at })),
+    ...rows.map((row) => db.insert(flights).values(row)),
     db
       .insert(guestTravel)
       .values({ guestId, driving: travel.driving === true, updatedAt: at })
@@ -69,7 +76,7 @@ export async function saveTravel(db: Db, guestId: string, travel: GuestTravel): 
 
 /** Everyone's flights, for the board. */
 export async function allFlights(db: Db): Promise<{ guestId: string; direction: "in" | "out"; leg: FlightLeg }[]> {
-  const rows = await db.select().from(flights);
+  const rows = await db.select().from(flights).orderBy(asc(flights.guestId), asc(flights.direction), asc(flights.leg));
   return rows.map((r) => ({ guestId: r.guestId, direction: r.direction, leg: toLeg(r) }));
 }
 

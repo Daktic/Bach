@@ -1,4 +1,4 @@
-import { enrichFlight, sortFlights } from "~/lib/flights";
+import { enrichFlight, sortFlights, tripFromLegs } from "~/lib/flights";
 import type {
   ArrivalMode,
   FlightBoard,
@@ -15,7 +15,7 @@ import type {
 
 /** The viewer's own travel as saved on /me (MyTravel in ~/lib/client/my-travel). */
 export interface LocalTravel {
-  inbound: FlightLeg | null;
+  inbound: FlightLeg[];
   driving: boolean;
 }
 
@@ -42,13 +42,8 @@ export type MyArrival<F extends GuestFlight = GuestFlight> =
  */
 export function resolveMyArrival(board: FlightBoard, viewer: Viewer, local: LocalTravel): MyArrival {
   if (local.driving) return { kind: "driving", savedLocally: true };
-  if (local.inbound) {
-    return {
-      kind: "flight",
-      savedLocally: true,
-      flight: { ...local.inbound, id: `local-${viewer.id}`, guestId: viewer.id, guestName: viewer.name },
-    };
-  }
+  const trip = tripFromLegs(local.inbound, { id: `local-${viewer.id}`, guestId: viewer.id, guestName: viewer.name });
+  if (trip) return { kind: "flight", savedLocally: true, flight: trip };
   const onBoard = board.flights.find((f) => f.guestId === viewer.id);
   if (onBoard) return { kind: "flight", flight: onBoard, savedLocally: false };
   if (board.driving.some((g) => g.id === viewer.id)) return { kind: "driving", savedLocally: false };
@@ -57,9 +52,9 @@ export function resolveMyArrival(board: FlightBoard, viewer: Viewer, local: Loca
 
 // ─── The board as the viewer sees it ──────────────────────────────────────────
 
-export type FlightGroup = "in_air" | "boarding" | "upcoming" | "landed";
+export type FlightGroup = "in_air" | "layover" | "boarding" | "upcoming" | "landed";
 
-const GROUP_ORDER: FlightGroup[] = ["in_air", "boarding", "upcoming", "landed"];
+const GROUP_ORDER: FlightGroup[] = ["in_air", "layover", "boarding", "upcoming", "landed"];
 
 /** Delayed flights haven't left yet, so they sit with the upcoming ones. */
 export function flightGroup(status: FlightStatus): FlightGroup {
@@ -116,7 +111,7 @@ export function hasNoArrivalPlan(
   member: { hasInboundFlight: boolean; arrivesBy: ArrivalMode },
   local?: LocalTravel,
 ): boolean {
-  const flying = member.hasInboundFlight || Boolean(local?.inbound);
+  const flying = member.hasInboundFlight || (local?.inbound.length ?? 0) > 0;
   const driving = member.arrivesBy === "drive" || Boolean(local?.driving);
   return !flying && !driving;
 }

@@ -19,8 +19,8 @@ export async function saveMyTravel(travel: GuestTravel): Promise<GuestTravel> {
   const { guest } = await requireGuest();
   if (!travel || typeof travel !== "object") throw new Error("Nothing to save.");
   return saveTravel((await getDb()), guest.id, {
-    inbound: travel.inbound ?? null,
-    outbound: travel.outbound ?? null,
+    inbound: Array.isArray(travel.inbound) ? travel.inbound : [],
+    outbound: Array.isArray(travel.outbound) ? travel.outbound : [],
     driving: travel.driving === true,
   });
 }

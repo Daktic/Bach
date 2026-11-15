@@ -20,6 +20,10 @@ import { CarIcon, LegSummary, PlusIcon, quietBtn, secondaryBtn } from "./ui";
 export function LegPanel(props: {
   direction: LegDirection;
   label: string;
+  /** Keeps form ids unique when a direction has several legs. Defaults to the direction. */
+  idPrefix?: string;
+  /** Keep the heading for screen readers (and focus) but don't show it. */
+  hideLabel?: boolean;
   defaultDate: string;
   /** Saved on this device. */
   leg: FlightLeg | null;
@@ -40,6 +44,7 @@ export function LegPanel(props: {
     emptyManualInput(props.direction, props.defaultDate),
   );
   const [removed, setRemoved] = createSignal<FlightLeg | null>(null);
+  const idPrefix = () => props.idPrefix ?? props.direction;
 
   const trackerLeg = () => {
     const t = props.tracker;
@@ -111,7 +116,7 @@ export function LegPanel(props: {
         when={mode() === "manual"}
         fallback={
           <FlightLookupForm
-            idPrefix={props.direction}
+            idPrefix={idPrefix()}
             direction={props.direction}
             flightNumber={flightNumber()}
             date={date()}
@@ -124,7 +129,7 @@ export function LegPanel(props: {
         }
       >
         <ManualFlightForm
-          idPrefix={props.direction}
+          idPrefix={idPrefix()}
           initial={manualInitial()}
           onSave={save}
           onBack={() => {
@@ -147,7 +152,7 @@ export function LegPanel(props: {
       <h3
         ref={headingEl}
         tabIndex={-1}
-        class="text-[11px] font-bold uppercase tracking-wider text-charcoal/75 outline-none"
+        class={props.hideLabel ? "sr-only" : "text-[11px] font-bold uppercase tracking-wider text-charcoal/75 outline-none"}
       >
         {props.label}
       </h3>
@@ -155,13 +160,13 @@ export function LegPanel(props: {
       <Show when={!props.leg && removed()}>
         {(leg) => (
           <div class="flex items-center justify-between gap-2 rounded-xl bg-charcoal/[0.05] pl-3">
-            <p id={`${props.direction}-removed-note`} class="min-w-0 truncate text-xs font-semibold text-charcoal/80">
+            <p id={`${idPrefix()}-removed-note`} class="min-w-0 truncate text-xs font-semibold text-charcoal/80">
               Removed {leg().flightNumber}.
             </p>
             <button
               ref={undoEl}
               type="button"
-              aria-describedby={`${props.direction}-removed-note`}
+              aria-describedby={`${idPrefix()}-removed-note`}
               class={quietBtn}
               onClick={() => save(leg())}
             >

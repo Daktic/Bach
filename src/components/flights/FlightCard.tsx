@@ -1,4 +1,4 @@
-import { Match, Show, Switch } from "solid-js";
+import { Match, Show, Switch, type JSX } from "solid-js";
 import type { GuestFlightWithStatus } from "~/lib/types";
 import { formatTime } from "~/lib/flights";
 import { FlightStatusBadge } from "./FlightStatusBadge";
@@ -45,6 +45,61 @@ export function markerPercent(flight: GuestFlightWithStatus): number {
 
 export const isActive = (flight: GuestFlightWithStatus) =>
   flight.status === "in_air" || flight.status === "boarding";
+
+/** "LAX → DFW → PHX · flight 1 of 2", for trips with a connection. */
+export function TripRoute(props: { flight: GuestFlightWithStatus; class?: string }) {
+  const stops = () => {
+    const legs = props.flight.legs ?? [];
+    return legs.length > 1 ? [legs[0].origin, ...legs.map((l) => l.destination)] : [];
+  };
+  return (
+    <Show when={stops().length > 0}>
+      <p class={`truncate text-xs font-semibold text-charcoal/75 ${props.class ?? ""}`}>
+        <span class="sr-only">Route: </span>
+        {stops().join(" → ")} · flight {props.flight.legIndex + 1} of {props.flight.legCount}
+      </p>
+    </Show>
+  );
+}
+
+/** The line under the route: time to landing, the layover, or when it leaves. */
+export function TripStatusLine(props: { flight: GuestFlightWithStatus; class: string; landed?: JSX.Element }) {
+  const f = () => props.flight;
+  const finalLeg = () => f().legIndex === f().legCount - 1;
+  return (
+    <Switch>
+      <Match when={f().status === "in_air" && f().minutesUntilArrival > 0}>
+        <p class={`flex items-center gap-1.5 text-xs font-semibold text-charcoal ${props.class}`}>
+          <StatusDot class="bg-teal" />
+          <span>
+            Lands {finalLeg() ? "" : `at ${f().destination} `}in {formatDuration(f().minutesUntilArrival)}
+          </span>
+        </p>
+      </Match>
+      <Match when={f().status === "layover"}>
+        <p class={`flex items-center gap-1.5 text-xs font-semibold text-charcoal ${props.class}`}>
+          <StatusDot class="bg-orange" />
+          <span>
+            Layover in {f().layoverAt} · {f().flightNumber} departs {formatTime(f().departsAt)}
+          </span>
+        </p>
+      </Match>
+      <Match when={f().status === "boarding"}>
+        <p class={`flex items-center gap-1.5 text-xs font-semibold text-charcoal ${props.class}`}>
+          <StatusDot class="bg-orange" />
+          <span>
+            Departing {f().legIndex > 0 ? `${f().origin} ` : ""}
+            {formatTime(f().departsAt)}
+          </span>
+        </p>
+      </Match>
+      <Match when={f().status === "upcoming" || f().status === "delayed"}>
+        <p class={`text-xs font-medium text-charcoal/75 ${props.class}`}>Departs {formatFlightDate(f().departsAt)}</p>
+      </Match>
+      <Match when={f().status === "landed" && props.landed}>{props.landed}</Match>
+    </Switch>
+  );
+}
 
 function RouteBar(props: Props) {
   const f = () => props.flight;
@@ -94,27 +149,11 @@ export function FlightCard(props: Props) {
         <FlightStatusBadge status={f().status} />
       </div>
 
+      <TripRoute flight={f()} class="mt-2" />
+
       <RouteBar flight={f()} />
 
-      <Switch>
-        <Match when={f().status === "in_air" && f().minutesUntilArrival > 0}>
-          <p class="mt-2 flex items-center gap-1.5 text-xs font-semibold text-charcoal">
-            <StatusDot class="bg-teal" />
-            <span>Lands in {formatDuration(f().minutesUntilArrival)}</span>
-          </p>
-        </Match>
-        <Match when={f().status === "boarding"}>
-          <p class="mt-2 flex items-center gap-1.5 text-xs font-semibold text-charcoal">
-            <StatusDot class="bg-orange" />
-            <span>Departing {formatTime(f().departsAt)}</span>
-          </p>
-        </Match>
-        <Match when={f().status === "upcoming" || f().status === "delayed"}>
-          <p class="mt-2 text-xs font-medium text-charcoal/75">
-            Departs {formatFlightDate(f().departsAt)}
-          </p>
-        </Match>
-      </Switch>
+      <TripStatusLine flight={f()} class="mt-2" />
     </div>
   );
 }

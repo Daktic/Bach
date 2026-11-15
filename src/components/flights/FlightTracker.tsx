@@ -18,6 +18,7 @@ const flightBoardQuery = query(() => getFlightBoard(), "flightBoard");
 
 const GROUP_LABEL: Record<FlightGroup, string> = {
   in_air:   "In the air",
+  layover:  "Layover",
   boarding: "Boarding",
   upcoming: "Upcoming",
   landed:   "Landed",

@@ -5,7 +5,7 @@ import { loadMyTravel, onMyTravelChange, saveMyTravel, type MyTravel } from "~/l
 import { DEFAULT_INBOUND_DATE, DEFAULT_OUTBOUND_DATE } from "~/lib/config";
 import type { Me } from "~/lib/types";
 import { sameTravel, toFlightLeg } from "./flight-entry";
-import { LegPanel } from "./LegPanel";
+import { LegList } from "./LegList";
 import { CarIcon, ErrorNote, SectionHeading } from "./ui";
 
 const SAVE_ERROR = "Couldn't save your flight. Check your connection and try again.";
@@ -80,7 +80,7 @@ export function FlightSection(props: { me: Me }) {
   createEffect(() => setTrackerDriving(tracker()?.kind === "driving"));
   // On the organiser's driving list with nothing saved here. The switch can't
   // turn that off; only adding a flight replaces it (as on /flights).
-  const seededDriving = () => !travel().driving && !travel().inbound && trackerDriving();
+  const seededDriving = () => !travel().driving && travel().inbound.length === 0 && trackerDriving();
 
   return (
     <section
@@ -105,40 +105,37 @@ export function FlightSection(props: { me: Me }) {
             <div>
               <p class="text-sm font-bold text-charcoal">Driving in</p>
               <p class="text-xs text-charcoal/80">No inbound flight needed. You can still add your flight home.</p>
-              <Show when={travel().inbound}>
-                {(leg) => (
-                  <p class="mt-1 text-xs text-charcoal/80">
-                    Your {leg().flightNumber} flight is kept in case you switch this off.
-                  </p>
-                )}
+              <Show when={travel().inbound.length > 0}>
+                <p class="mt-1 text-xs text-charcoal/80">
+                  Your {travel().inbound.map((l) => l.flightNumber).join(" + ")}{" "}
+                  {travel().inbound.length > 1 ? "flights are" : "flight is"} kept in case you switch this off.
+                </p>
               </Show>
             </div>
           </div>
         }
       >
         <Suspense fallback={<div aria-hidden="true" class="h-28 animate-pulse rounded-xl bg-charcoal/[0.06]" />}>
-          <LegPanel
+          <LegList
             direction="in"
             label="Flying in"
             defaultDate={DEFAULT_INBOUND_DATE}
-            leg={travel().inbound}
+            legs={travel().inbound}
             tracker={tracker()}
-            onSave={(leg) => save({ ...travel(), inbound: leg, driving: false })}
-            onRemove={() => save({ ...travel(), inbound: null })}
+            onChange={(legs) => save({ ...travel(), inbound: legs, driving: legs.length > 0 ? false : travel().driving })}
           />
         </Suspense>
       </Show>
 
       <div class="h-px w-full bg-charcoal/10" />
 
-      <LegPanel
+      <LegList
         direction="out"
         label="Flying home"
         addLabel="Add your flight home"
         defaultDate={DEFAULT_OUTBOUND_DATE}
-        leg={travel().outbound}
-        onSave={(leg) => save({ ...travel(), outbound: leg })}
-        onRemove={() => save({ ...travel(), outbound: null })}
+        legs={travel().outbound}
+        onChange={(legs) => save({ ...travel(), outbound: legs })}
       />
 
       <Show when={saveError()}>{(message) => <ErrorNote>{message()}</ErrorNote>}</Show>

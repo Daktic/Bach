@@ -9,6 +9,7 @@ interface Props {
 // charcoal and the colour goes on the tint and the dot.
 const config: Record<FlightStatus, { label: string; classes: string; dot?: string; pulse?: boolean }> = {
   in_air:   { label: "In the air",  classes: "bg-teal/15 text-charcoal",        dot: "bg-teal",   pulse: true },
+  layover:  { label: "Layover",     classes: "bg-orange/15 text-charcoal",      dot: "bg-orange" },
   boarding: { label: "Boarding",    classes: "bg-orange/15 text-charcoal",      dot: "bg-orange", pulse: true },
   upcoming: { label: "Upcoming",    classes: "bg-charcoal/8 text-charcoal/80" },
   delayed:  { label: "Delayed",     classes: "bg-orange/20 text-charcoal",      dot: "bg-orange" },

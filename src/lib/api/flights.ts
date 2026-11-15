@@ -5,7 +5,8 @@ import { seedFlights } from "~/lib/data/flights";
 import { getDb } from "~/lib/server/db";
 import { requireGuest } from "~/lib/server/session";
 import { allFlights, allProfiles, allTravelPlans } from "~/lib/server/store";
-import type { FlightBoard, GuestFlight } from "~/lib/types";
+import { tripFromLegs } from "~/lib/flights";
+import type { FlightBoard, FlightLeg, GuestFlight } from "~/lib/types";
 
 /**
  * Everyone's inbound flight, plus who has none and who's driving (FL-3, FL-5,
@@ -28,9 +29,14 @@ export async function getFlightBoard(): Promise<FlightBoard> {
     const { direction: _d, ...leg } = f;
     inbound.set(f.guestId, { ...leg, guestName: nameOf(f.guestId) });
   }
+  // A guest's own legs replace the organiser's entry; connections become one trip.
+  const enteredLegs = new Map<string, FlightLeg[]>();
   for (const f of entered) {
-    if (f.direction !== "in") continue;
-    inbound.set(f.guestId, { ...f.leg, id: `${f.guestId}-in`, guestId: f.guestId, guestName: nameOf(f.guestId) });
+    if (f.direction === "in") enteredLegs.set(f.guestId, [...(enteredLegs.get(f.guestId) ?? []), f.leg]);
+  }
+  for (const [guestId, legs] of enteredLegs) {
+    const trip = tripFromLegs(legs, { id: `${guestId}-in`, guestId, guestName: nameOf(guestId) });
+    if (trip) inbound.set(guestId, trip);
   }
 
   const onRoster = new Set(guests.map((g) => g.id));

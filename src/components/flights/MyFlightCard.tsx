@@ -1,10 +1,10 @@
-import { Match, Show, Switch } from "solid-js";
+import { Match, Switch } from "solid-js";
 import type { FlightStatus, GuestFlightWithStatus } from "~/lib/types";
 import { formatTime } from "~/lib/flights";
-import { ArrivalTime, isActive, markerPercent, StatusDot } from "./FlightCard";
+import { ArrivalTime, isActive, markerPercent, TripRoute, TripStatusLine } from "./FlightCard";
 import { FlightStatusBadge } from "./FlightStatusBadge";
 import type { MyArrival } from "./flight-board";
-import { formatDuration, formatFlightDate } from "./flight-format";
+
 import { CarIcon, PlaneIcon } from "./icons";
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
 
 const RING: Record<FlightStatus, string> = {
   in_air:   "border-teal",
+  layover:  "border-orange",
   boarding: "border-orange",
   upcoming: "border-charcoal/20",
   delayed:  "border-orange",
@@ -56,28 +57,11 @@ function FlightRoute(props: { flight: GuestFlightWithStatus }) {
       </div>
 
       {/* Status line */}
-      <Switch>
-        <Match when={f().status === "in_air" && f().minutesUntilArrival > 0}>
-          <p class="mt-3 flex items-center gap-1.5 text-xs font-semibold text-charcoal">
-            <StatusDot class="bg-teal" />
-            <span>Lands in {formatDuration(f().minutesUntilArrival)}</span>
-          </p>
-        </Match>
-        <Match when={f().status === "boarding"}>
-          <p class="mt-3 flex items-center gap-1.5 text-xs font-semibold text-charcoal">
-            <StatusDot class="bg-orange" />
-            <span>Departing {formatTime(f().departsAt)}</span>
-          </p>
-        </Match>
-        <Match when={f().status === "upcoming" || f().status === "delayed"}>
-          <p class="mt-3 text-xs font-medium text-charcoal/75">
-            Departs {formatFlightDate(f().departsAt)}
-          </p>
-        </Match>
-        <Match when={f().status === "landed"}>
-          <p class="mt-3 text-xs font-semibold text-charcoal/75">Landed · Welcome!</p>
-        </Match>
-      </Switch>
+      <TripStatusLine
+        flight={f()}
+        class="mt-3"
+        landed={<p class="mt-3 text-xs font-semibold text-charcoal/75">Landed · Welcome!</p>}
+      />
     </div>
   );
 }
@@ -147,6 +131,7 @@ export function MyFlightCard(props: Props) {
                 <FlightStatusBadge status={f().status} />
               </div>
 
+              <TripRoute flight={f()} class="px-4 pt-3" />
               <FlightRoute flight={f()} />
             </>
           )}

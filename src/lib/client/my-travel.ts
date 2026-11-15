@@ -8,13 +8,14 @@ import type { FlightLeg } from "~/lib/types";
 // Written by /me, read by /flights and the "Who's here" bar.
 
 export interface MyTravel {
-  inbound: FlightLeg | null;
-  outbound: FlightLeg | null;
+  /** Each direction's legs in departure order; connections are extra legs. */
+  inbound: FlightLeg[];
+  outbound: FlightLeg[];
   /** FL-9: driving in instead of flying. */
   driving: boolean;
 }
 
-export const EMPTY_TRAVEL: MyTravel = { inbound: null, outbound: null, driving: false };
+export const EMPTY_TRAVEL: MyTravel = { inbound: [], outbound: [], driving: false };
 
 const CHANGE_EVENT = "bach:travel-change";
 const cache = new Map<string, MyTravel>();
@@ -46,7 +47,7 @@ export function refreshMyTravel(guestId: string): Promise<void> {
 export function loadMyTravel(guestId: string): MyTravel {
   const cached = cache.get(guestId);
   if (!cached) void refreshMyTravel(guestId);
-  return cached ? { ...cached } : { ...EMPTY_TRAVEL };
+  return { ...(cached ?? EMPTY_TRAVEL) };
 }
 
 /** Saves to the server. Shows the change straight away; reverts if the save fails. */

@@ -12,6 +12,7 @@ import {
   offRouteAirport,
   sameLeg,
   sameTravel,
+  tripProblems,
   timeZoneOptions,
   toFlightLeg,
   validateManualLeg,
@@ -243,7 +244,20 @@ describe("leg helpers", () => {
     expect(sameLeg(leg, { ...leg, arrivesAt: "2027-04-08T07:25:00-04:00" })).toBe(false);
     expect(sameLeg(null, null)).toBe(true);
     expect(sameLeg(leg, null)).toBe(false);
-    expect(sameTravel({ inbound: leg, outbound: null, driving: false }, { inbound: { ...leg }, outbound: null, driving: false })).toBe(true);
-    expect(sameTravel({ inbound: null, outbound: null, driving: true }, { inbound: null, outbound: null, driving: false })).toBe(false);
+    expect(sameTravel({ inbound: [leg], outbound: [], driving: false }, { inbound: [{ ...leg }], outbound: [], driving: false })).toBe(true);
+    expect(sameTravel({ inbound: [], outbound: [], driving: true }, { inbound: [], outbound: [], driving: false })).toBe(false);
+    expect(sameTravel({ inbound: [leg], outbound: [], driving: false }, { inbound: [leg, leg], outbound: [], driving: false })).toBe(false);
+  });
+
+  it("points out gaps between connections and trips that miss PHX", () => {
+    const toDen = { ...leg, flightNumber: "UA 1", origin: "EWR", destination: "DEN" };
+    const toPhx = { ...leg, flightNumber: "UA 2", origin: "DEN", destination: "PHX" };
+    expect(tripProblems("in", [toDen, toPhx])).toEqual([]);
+    expect(tripProblems("in", [toDen])).toEqual(["Your last flight lands at DEN. Add your connection to PHX."]);
+    expect(tripProblems("in", [toDen, { ...toPhx, origin: "ORD" }])).toEqual([
+      "UA 1 lands at DEN, but UA 2 leaves from ORD.",
+    ]);
+    expect(tripProblems("out", [{ ...leg, origin: "PHX", destination: "DEN" }])).toEqual([]);
+    expect(tripProblems("out", [toDen])).toHaveLength(1);
   });
 });

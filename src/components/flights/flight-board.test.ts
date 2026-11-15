@@ -38,7 +38,7 @@ const board: FlightBoard = {
 };
 
 const twoPmArizona = new Date("2027-04-08T14:00:00-07:00");
-const noLocal = { inbound: null, driving: false };
+const noLocal = { inbound: [], driving: false };
 const garrett = { id: "gberg", name: "Garrett" };
 
 const localLeg: FlightLeg = {
@@ -57,7 +57,7 @@ describe("resolveMyArrival", () => {
   });
 
   it("prefers the flight saved on /me over the board", () => {
-    const mine = resolveMyArrival(board, garrett, { inbound: localLeg, driving: false });
+    const mine = resolveMyArrival(board, garrett, { inbound: [localLeg], driving: false });
     expect(mine).toMatchObject({
       kind: "flight",
       savedLocally: true,
@@ -66,7 +66,7 @@ describe("resolveMyArrival", () => {
   });
 
   it("treats a saved 'driving' as beating any flight, and flags it as saved on this device", () => {
-    expect(resolveMyArrival(board, garrett, { inbound: localLeg, driving: true })).toEqual({
+    expect(resolveMyArrival(board, garrett, { inbound: [localLeg], driving: true })).toEqual({
       kind: "driving",
       savedLocally: true,
     });
@@ -116,7 +116,7 @@ describe("buildFlightView", () => {
   });
 
   it("hides the board flight when the viewer saved their own", () => {
-    const view = buildFlightView(board, garrett, { inbound: localLeg, driving: false }, twoPmArizona);
+    const view = buildFlightView(board, garrett, { inbound: [localLeg], driving: false }, twoPmArizona);
     expect(view.mine).toMatchObject({ kind: "flight", savedLocally: true, flight: { status: "landed" } });
     expect(view.groups.flatMap((g) => g.flights).map((f) => f.guestId)).not.toContain("gberg");
   });
@@ -150,8 +150,47 @@ describe("who's here", () => {
 
   it("counts the viewer's own saved travel", () => {
     const member = { hasInboundFlight: false, arrivesBy: "fly" as const };
-    expect(hasNoArrivalPlan(member, { inbound: localLeg, driving: false })).toBe(false);
-    expect(hasNoArrivalPlan(member, { inbound: null, driving: true })).toBe(false);
-    expect(hasNoArrivalPlan(member, { inbound: null, driving: false })).toBe(true);
+    expect(hasNoArrivalPlan(member, { inbound: [localLeg], driving: false })).toBe(false);
+    expect(hasNoArrivalPlan(member, { inbound: [], driving: true })).toBe(false);
+    expect(hasNoArrivalPlan(member, { inbound: [], driving: false })).toBe(true);
+  });
+});
+
+describe("trips with a connection", () => {
+  const toDfw: FlightLeg = {
+    flightNumber: "AA 100",
+    airline: "American",
+    origin: "LAX",
+    destination: "DFW",
+    departsAt: "2027-04-08T07:00:00-07:00",
+    arrivesAt: "2027-04-08T12:00:00-05:00",
+  };
+  const toPhx: FlightLeg = {
+    flightNumber: "AA 200",
+    airline: "American",
+    origin: "DFW",
+    destination: "PHX",
+    departsAt: "2027-04-08T14:00:00-05:00",
+    arrivesAt: "2027-04-08T14:45:00-07:00",
+  };
+  const at = (iso: string) => buildFlightView({ flights: [], noFlight: [], driving: [] }, garrett, { inbound: [toPhx, toDfw], driving: false }, new Date(iso)).mine;
+
+  it("follows the leg in progress, whatever order the legs were saved in", () => {
+    expect(at("2027-04-08T08:00:00-07:00")).toMatchObject({
+      kind: "flight",
+      flight: { status: "in_air", flightNumber: "AA 100", destination: "DFW", legIndex: 0, legCount: 2, finalDestination: "PHX" },
+    });
+  });
+
+  it("shows the layover between legs, then boarding and the last leg", () => {
+    expect(at("2027-04-08T10:30:00-07:00")).toMatchObject({ flight: { status: "layover", layoverAt: "DFW", flightNumber: "AA 200" } });
+    expect(at("2027-04-08T11:30:00-07:00")).toMatchObject({ flight: { status: "boarding", legIndex: 1 } });
+    expect(at("2027-04-08T13:00:00-07:00")).toMatchObject({ flight: { status: "in_air", destination: "PHX" } });
+    expect(at("2027-04-08T15:00:00-07:00")).toMatchObject({ flight: { status: "landed", legIndex: 1 } });
+  });
+
+  it("is upcoming before the first leg, and groups layovers on their own", () => {
+    expect(at("2027-04-07T12:00:00-07:00")).toMatchObject({ flight: { status: "upcoming", legIndex: 0 } });
+    expect(flightGroup("layover")).toBe("layover");
   });
 });

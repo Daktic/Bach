@@ -33,34 +33,47 @@ const jfk = {
 
 describe("travel", () => {
   it("starts empty", async () => {
-    expect(await getTravel(db, "chris")).toEqual({ inbound: null, outbound: null, driving: false });
+    expect(await getTravel(db, "chris")).toEqual({ inbound: [], outbound: [], driving: false });
   });
 
   it("saves and replaces a guest's flights and driving flag", async () => {
-    await saveTravel(db, "chris", { inbound: jfk, outbound: null, driving: false });
-    expect((await getTravel(db, "chris")).inbound).toEqual(jfk);
+    await saveTravel(db, "chris", { inbound: [jfk], outbound: [], driving: false });
+    expect((await getTravel(db, "chris")).inbound).toEqual([jfk]);
 
     const back = { ...jfk, flightNumber: "AA 456", origin: "PHX", destination: "JFK" };
-    await saveTravel(db, "chris", { inbound: null, outbound: back, driving: true });
-    expect(await getTravel(db, "chris")).toEqual({ inbound: null, outbound: back, driving: true });
+    await saveTravel(db, "chris", { inbound: [], outbound: [back], driving: true });
+    expect(await getTravel(db, "chris")).toEqual({ inbound: [], outbound: [back], driving: true });
   });
 
   it("keeps guests separate", async () => {
-    await saveTravel(db, "chris", { inbound: jfk, outbound: null, driving: false });
-    await saveTravel(db, "matt", { inbound: null, outbound: null, driving: true });
-    expect((await getTravel(db, "matt")).inbound).toBeNull();
+    await saveTravel(db, "chris", { inbound: [jfk], outbound: [], driving: false });
+    await saveTravel(db, "matt", { inbound: [], outbound: [], driving: true });
+    expect((await getTravel(db, "matt")).inbound).toEqual([]);
     expect((await allFlights(db)).map((f) => f.guestId)).toEqual(["chris"]);
     expect((await allTravelPlans(db)).get("matt")).toEqual({ driving: true, status: "home" });
   });
 
   it("rejects a flight without UTC offsets", async () => {
     const bad = { ...jfk, departsAt: "2027-04-08T10:00" };
-    await expect(saveTravel(db, "chris", { inbound: bad, outbound: null, driving: false })).rejects.toThrow();
-    expect((await getTravel(db, "chris")).inbound).toBeNull();
+    await expect(saveTravel(db, "chris", { inbound: [bad], outbound: [], driving: false })).rejects.toThrow();
+    expect((await getTravel(db, "chris")).inbound).toEqual([]);
+  });
+
+  it("stores connections in departure order, whatever order they arrive in", async () => {
+    const toOrd = { ...jfk, flightNumber: "UA 1", destination: "ORD", arrivesAt: "2027-04-08T11:30:00-05:00" };
+    const toPhx = { ...jfk, flightNumber: "UA 2", origin: "ORD", departsAt: "2027-04-08T13:00:00-05:00", arrivesAt: "2027-04-08T14:45:00-07:00" };
+    await saveTravel(db, "chris", { inbound: [toPhx, toOrd], outbound: [], driving: false });
+    expect((await getTravel(db, "chris")).inbound.map((l) => l.flightNumber)).toEqual(["UA 1", "UA 2"]);
+    expect((await allFlights(db)).map((f) => f.leg.flightNumber)).toEqual(["UA 1", "UA 2"]);
+  });
+
+  it("caps the legs each way and refuses anything that isn't a list", async () => {
+    await expect(saveTravel(db, "chris", { inbound: Array(5).fill(jfk), outbound: [], driving: false })).rejects.toThrow();
+    await expect(saveTravel(db, "chris", { inbound: jfk as never, outbound: [], driving: false })).rejects.toThrow();
   });
 
   it("stores the Who's here status without touching the driving flag", async () => {
-    await saveTravel(db, "chris", { inbound: null, outbound: null, driving: true });
+    await saveTravel(db, "chris", { inbound: [], outbound: [], driving: true });
     await setStatus(db, "chris", "plane");
     expect((await allTravelPlans(db)).get("chris")).toEqual({ driving: true, status: "plane" });
     await expect(setStatus(db, "chris", "teleporting" as never)).rejects.toThrow();

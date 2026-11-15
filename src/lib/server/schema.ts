@@ -8,12 +8,17 @@ import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
 const updatedAt = () => text("updated_at").notNull();
 
-/** A guest's flight in (to PHX) or out (home). One of each per guest. */
+/**
+ * One leg of a guest's trip, in (to PHX) or out (home). A guest's trip is all
+ * their legs; connections are extra legs, numbered in departure order.
+ */
 export const flights = sqliteTable(
   "flights",
   {
     guestId: text("guest_id").notNull(),
     direction: text("direction", { enum: ["in", "out"] }).notNull(),
+    // 0, 1, 2… in departure order within the direction.
+    leg: integer("leg").notNull().default(0),
     flightNumber: text("flight_number").notNull(),
     airline: text("airline").notNull(),
     origin: text("origin").notNull(),
@@ -23,7 +28,7 @@ export const flights = sqliteTable(
     arrivesAt: text("arrives_at").notNull(),
     updatedAt: updatedAt(),
   },
-  (t) => [primaryKey({ columns: [t.guestId, t.direction] })],
+  (t) => [primaryKey({ columns: [t.guestId, t.direction, t.leg] })],
 );
 
 /** Driving in instead of flying (FL-9), and the "Who's here" status (FL-7, FL-8). */

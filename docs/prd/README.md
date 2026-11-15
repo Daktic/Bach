@@ -105,9 +105,9 @@ Guests see who has booked, who's in the air, and who's landed. Guests without a 
 
 | ID | Requirement | Pri | State |
 |----|-------------|-----|-------|
-| FL-1 | A guest can enter their inbound (and optional outbound) flight by flight number + date, with auto-filled details from a lookup | P0 | 🟡 lookup plus manual entry; saved on the guest's own device until FL-2. The lookup can't see future flights yet (§10 Q1) |
+| FL-1 | A guest can enter their inbound (and optional outbound) flight by flight number + date, with auto-filled details from a lookup | P0 | 🟡 lookup plus manual entry, one leg at a time, with connections (up to 4 legs each way, sorted by departure). The lookup can't see future flights yet (§10 Q1) |
 | FL-2 | Flights are stored server-side so every guest sees everyone's flights | P0 | ✅ stored in Turso (ADR 0007) |
-| FL-3 | `/flights` lists every guest's inbound flight, sorted: in the air, boarding, upcoming, landed | P0 | 🟡 works on mock flights plus the viewer's own entry |
+| FL-3 | `/flights` lists every guest's inbound flight, sorted: in the air, boarding, upcoming, landed | P0 | ✅ trips with a connection follow the leg in progress, with a layover stage between legs |
 | FL-4 | Flight status reflects reality on travel day (delays, actual landing), falling back to schedule-based status if the API fails | P1 | 🟡 schedule-based only; provider undecided (§10 Q1) |
 | FL-5 | Guests with no flight are listed separately with a "book a flight" call to action | P0 | ✅ |
 | FL-6 | `/flights/book` searches live fares from the guest's nearest airport to PHX for the trip dates and links out to book | P1 | ✅ SerpAPI, cached, per-guest hourly limit, sign-in required |

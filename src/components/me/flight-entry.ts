@@ -317,8 +317,37 @@ export function sameLeg(a: FlightLeg | null, b: FlightLeg | null): boolean {
   );
 }
 
+export function sameLegs(a: readonly FlightLeg[], b: readonly FlightLeg[]): boolean {
+  return a.length === b.length && a.every((leg, i) => sameLeg(leg, b[i]));
+}
+
 export function sameTravel(a: MyTravel, b: MyTravel): boolean {
-  return a.driving === b.driving && sameLeg(a.inbound, b.inbound) && sameLeg(a.outbound, b.outbound);
+  return a.driving === b.driving && sameLegs(a.inbound, b.inbound) && sameLegs(a.outbound, b.outbound);
+}
+
+/**
+ * What's off about a trip's legs, in plain words: a gap between connections,
+ * or an inbound trip that doesn't end at PHX (a trip home that doesn't start
+ * there). Legs are in departure order. Empty when it all lines up.
+ */
+export function tripProblems(direction: LegDirection, legs: readonly FlightLeg[]): string[] {
+  const problems: string[] = [];
+  for (let i = 1; i < legs.length; i++) {
+    const before = legs[i - 1];
+    const next = legs[i];
+    if (before.destination !== next.origin) {
+      problems.push(`${before.flightNumber} lands at ${before.destination}, but ${next.flightNumber} leaves from ${next.origin}.`);
+    }
+  }
+  const last = legs.at(-1);
+  const first = legs[0];
+  if (direction === "in" && last && last.destination !== DESTINATION_AIRPORT) {
+    problems.push(`Your last flight lands at ${last.destination}. Add your connection to ${DESTINATION_AIRPORT}.`);
+  }
+  if (direction === "out" && first && first.origin !== DESTINATION_AIRPORT) {
+    problems.push(`Your first flight home leaves from ${first.origin}, not ${DESTINATION_AIRPORT}.`);
+  }
+  return problems;
 }
 
 /** The airport that isn't PHX where it should be: an inbound leg's arrival, or a flight home's departure. */

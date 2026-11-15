@@ -1,6 +1,6 @@
 import { TRIP_TIME_ZONE } from "./config";
 import { getCurrentDate } from "./time";
-import type { FlightStatus, GuestFlight, GuestFlightWithStatus } from "./types";
+import type { FlightLeg, FlightStatus, GuestFlight, GuestFlightWithStatus } from "./types";
 import { formatWallClock, toInstant } from "./zoned-time";
 
 // Flight times carry the airport's UTC offset (see FlightLeg in types.ts).
@@ -22,10 +22,40 @@ export function computeFlightStatus(
   return "upcoming";
 }
 
+/** Legs in departure order (a trip's legs can be entered in any order). */
+export function sortLegs<L extends FlightLeg>(legs: readonly L[]): L[] {
+  return [...legs].sort((a, b) => flightInstant(a.departsAt).getTime() - flightInstant(b.departsAt).getTime());
+}
+
+/**
+ * A trip for the board from its legs: the last leg's fields on top, and the
+ * full list when there's more than one. Null when there are no legs.
+ */
+export function tripFromLegs(
+  legs: readonly FlightLeg[],
+  who: { id: string; guestId: string; guestName: string },
+): GuestFlight | null {
+  const ordered = sortLegs(legs);
+  const last = ordered.at(-1);
+  if (!last) return null;
+  return { ...last, ...who, ...(ordered.length > 1 ? { legs: ordered } : {}) };
+}
+
 export function enrichFlight(flight: GuestFlight, now: Date = getCurrentDate()): GuestFlightWithStatus {
-  const departsAt = flightInstant(flight.departsAt);
-  const arrivesAt = flightInstant(flight.arrivesAt);
-  const status = computeFlightStatus(departsAt, arrivesAt, now);
+  const { legs: _legs, ...lastLeg } = flight;
+  const legs: FlightLeg[] = flight.legs && flight.legs.length > 0 ? sortLegs(flight.legs) : [lastLeg];
+  const final = legs[legs.length - 1];
+
+  // The first leg that hasn't landed yet; once everything has, the last one.
+  const found = legs.findIndex((l) => now < flightInstant(l.arrivesAt));
+  const legIndex = found === -1 ? legs.length - 1 : found;
+  const leg = legs[legIndex];
+
+  const departsAt = flightInstant(leg.departsAt);
+  const arrivesAt = flightInstant(leg.arrivesAt);
+  let status = computeFlightStatus(departsAt, arrivesAt, now);
+  const layoverAt = status === "upcoming" && legIndex > 0 ? legs[legIndex - 1].destination : undefined;
+  if (layoverAt) status = "layover";
 
   const totalMs = arrivesAt.getTime() - departsAt.getTime();
   const elapsedMs = now.getTime() - departsAt.getTime();
@@ -35,7 +65,18 @@ export function enrichFlight(flight: GuestFlight, now: Date = getCurrentDate()):
     (arrivesAt.getTime() - now.getTime()) / 60_000,
   );
 
-  return { ...flight, status, progressFraction, minutesUntilArrival };
+  return {
+    ...flight,
+    ...leg,
+    status,
+    progressFraction,
+    minutesUntilArrival,
+    legIndex,
+    legCount: legs.length,
+    finalDestination: final.destination,
+    finalArrivesAt: final.arrivesAt,
+    ...(layoverAt ? { layoverAt } : {}),
+  };
 }
 
 /**
@@ -48,16 +89,17 @@ export function formatTime(iso: string): string {
 
 const STATUS_ORDER: Record<FlightStatus, number> = {
   in_air: 0,
-  boarding: 1,
-  upcoming: 2,
-  delayed: 3,
-  landed: 4,
+  layover: 1,
+  boarding: 2,
+  upcoming: 3,
+  delayed: 4,
+  landed: 5,
 };
 
 export function sortFlights(flights: GuestFlightWithStatus[]): GuestFlightWithStatus[] {
   return [...flights].sort((a, b) => {
     const byStatus = STATUS_ORDER[a.status] - STATUS_ORDER[b.status];
     if (byStatus !== 0) return byStatus;
-    return flightInstant(a.arrivesAt).getTime() - flightInstant(b.arrivesAt).getTime();
+    return flightInstant(a.finalArrivesAt).getTime() - flightInstant(b.finalArrivesAt).getTime();
   });
 }

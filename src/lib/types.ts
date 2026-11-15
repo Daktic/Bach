@@ -53,7 +53,8 @@ export interface TripDay {
 
 // ─── Flights ──────────────────────────────────────────────────────────────────
 
-export type FlightStatus = "upcoming" | "boarding" | "in_air" | "landed" | "delayed";
+/** "layover": landed from one leg, next leg not boarding yet. */
+export type FlightStatus = "upcoming" | "boarding" | "in_air" | "layover" | "landed" | "delayed";
 export type FlightDirection = "in" | "out";
 
 /**
@@ -72,16 +73,32 @@ export interface FlightLeg {
   arrivesAt: string;
 }
 
+/**
+ * A guest's trip to PHX. The FlightLeg fields are the last leg (the one that
+ * lands); `legs` lists every leg in departure order when there's a connection.
+ */
 export interface GuestFlight extends FlightLeg {
   id: string;
   guestId: string;      // matches Guest.id
   guestName: string;
+  legs?: FlightLeg[];
 }
 
+/**
+ * The trip as of `now`. The FlightLeg fields are the leg in progress (or the
+ * next one, during a layover; the last one once landed).
+ */
 export interface GuestFlightWithStatus extends GuestFlight {
   status: FlightStatus;
-  progressFraction: number;    // 0–1, meaningful only for in_air
-  minutesUntilArrival: number; // negative once landed
+  progressFraction: number;    // 0–1 along the current leg
+  minutesUntilArrival: number; // to the current leg's arrival; negative once landed
+  legIndex: number;            // 0-based position of the current leg
+  legCount: number;
+  /** Where the whole trip ends, and when (for sorting and "lands at PHX"). */
+  finalDestination: string;
+  finalArrivesAt: string;
+  /** During a layover, where they're waiting. */
+  layoverAt?: string;
 }
 
 export interface GuestWithoutFlight {

@@ -5,6 +5,9 @@ import { hasUtcOffset, parseWallTime } from "~/lib/zoned-time";
 
 const MAX_TEXT = 80;
 
+/** Legs allowed each way: plenty for connections, small enough to stay sane. */
+export const MAX_LEGS = 4;
+
 /** A complete flight with offset-aware times (see FlightLeg). */
 export function isValidLeg(value: unknown): value is FlightLeg {
   if (!value || typeof value !== "object") return false;
