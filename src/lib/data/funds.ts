@@ -50,7 +50,7 @@ export const pools: Pool[] = [
     id: "party-bus",
     title: "Party Bus",
     description:
-      "Scottsdale Party Bus Crawler, an open-air BYOB party bus, all day Saturday: from the house to both golf courses, then the casino, back home, and out for the night. Get yourself to and from the airport.",
+      "Scottsdale Party Bus Crawler, an open-air BYOB party bus, all day Saturday: from the house to both golf courses, then from the We-Ko-Pa Casino Resort (everyone meets there after golf) back home, and out for the night. Get yourself to and from the airport.",
     placeholderGradient: "linear-gradient(145deg, #4a3a9e 0%, #7a66d4 45%, #b8abf0 100%)",
     // Photos linked from scottsdalepartybuscrawler.com, not copied.
     photos: [
@@ -71,7 +71,7 @@ export const pools: Pool[] = [
     // per player, before card fees; the page shows how many paid for each.
     id: "golf",
     title: "Golf Day",
-    description: "Two groups, two courses. Pick yours: Cholla at We-Ko-Pa or Desert Canyon Golf Club in Fountain Hills.",
+    description: "Two groups, two courses. Pick yours: Cholla at We-Ko-Pa or Desert Canyon Golf Club in Fountain Hills. After your round, both groups meet at the We-Ko-Pa Casino Resort for the bus home.",
     placeholderGradient: "linear-gradient(145deg, #2d6e28 0%, #57a852 45%, #9ed99a 100%)",
     // Photos linked from wekopa.com and desertcanyongolf.com, not copied.
     photos: [

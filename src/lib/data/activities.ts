@@ -11,8 +11,8 @@ export const activityData: Activity[] = [
   // Thursday Apr 8 — Arrival
   {
     id: "thu-arrival",
-    // American Airlines "California, Arizona, Texas, New Mexico" poster by E. McKnight Kauffer, 1948. Public domain, via Wikimedia Commons: https://commons.wikimedia.org/wiki/File:American_Airlines_poster_-_California,_Arizona,_Texas,_New_Mexico_-_1948.jpg
-    image: "https://upload.wikimedia.org/wikipedia/commons/9/96/American_Airlines_poster_-_California%2C_Arizona%2C_Texas%2C_New_Mexico_-_1948.jpg",
+    // "Greetings from Phoenix, Arizona" large-letter postcard, Curt Teich & Co., 1939 (Newberry Library, Curt Teich Postcard Archives). Public domain, via Wikimedia Commons: https://commons.wikimedia.org/wiki/File:Untitled_-_Large_Letters_(NBY_10382).jpg
+    image: "https://upload.wikimedia.org/wikipedia/commons/3/34/Untitled_-_Large_Letters_%28NBY_10382%29.jpg",
     day: "2027-04-08",
     title: "Arrive & Check In",
     description: "Flights land, grab the keys to the Airbnb, and get settled in.",
@@ -60,7 +60,7 @@ export const activityData: Activity[] = [
     image: "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/8b/Golf_de_la_Soukra%2C_Tunis._P._L._M._F%C3%A9d%C3%A9ration_des_syndicats_d%27initiative_de_Tunisie_-_affiche_-_Roger_Broders_-_btv1b90039522.jpg/960px-Golf_de_la_Soukra%2C_Tunis._P._L._M._F%C3%A9d%C3%A9ration_des_syndicats_d%27initiative_de_Tunisie_-_affiche_-_Roger_Broders_-_btv1b90039522.jpg",
     day: "2027-04-10",
     title: "Golf Day",
-    description: "Two groups, two courses: Cholla at We-Ko-Pa or Desert Canyon Golf Club. The party bus takes everyone there, then on to the casino and home.",
+    description: "Two groups, two courses: Cholla at We-Ko-Pa or Desert Canyon Golf Club. The party bus drops everyone off; after your round, meet at the We-Ko-Pa Casino Resort for the bus home.",
     startTime: "08:00",
     poolId: "golf",
   },
