@@ -19,7 +19,9 @@ async function connect(): Promise<Db> {
     const { createClient } = await import("@libsql/client/web");
     client = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN || undefined });
   } else {
-    if (process.env.VERCEL || process.env.NODE_ENV === "production") {
+    // Hosted, a missing URL is a setup mistake: say so instead of failing to
+    // write a file to a read-only disk. An explicit file: URL is allowed.
+    if (!url && (process.env.VERCEL || process.env.NODE_ENV === "production")) {
       throw new Error("TURSO_DATABASE_URL is not set; the hosted app has nowhere to store data.");
     }
     const { createClient } = await import("@libsql/client");

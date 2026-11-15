@@ -13,6 +13,7 @@ const PAGES: ReadonlyArray<{ path: string; name: string }> = [
   { path: "/", name: "Timeline" },
   { path: "/flights", name: "Flights" },
   { path: "/flights/book", name: "Book a flight" },
+  { path: "/chat", name: "Chat" },
   { path: "/funds", name: "Funds" },
   { path: "/funds/:id", name: "Pool" },
   { path: "/activity/:id", name: "Activity" },

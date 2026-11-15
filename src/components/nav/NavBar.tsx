@@ -11,6 +11,7 @@ import {
   Suspense,
   type JSX,
 } from "solid-js";
+import { usePulse } from "~/lib/client/pulse";
 import { loadMyProfile, onMyProfileChange, type MyProfile } from "~/lib/client/my-profile";
 import { signOut, signOutStarted } from "~/lib/client/sign-out";
 import { meQuery } from "~/lib/queries";
@@ -30,6 +31,14 @@ function FlightsIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 shrink-0 rotate-90" aria-hidden="true">
       <path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" />
+    </svg>
+  );
+}
+
+function ChatIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 shrink-0" aria-hidden="true">
+      <path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z" />
     </svg>
   );
 }
@@ -79,6 +88,7 @@ function CloseIcon() {
 const NAV_ITEMS = [
   { href: "/",        label: "Timeline", icon: TimelineIcon },
   { href: "/flights", label: "Flights",  icon: FlightsIcon  },
+  { href: "/chat",    label: "Chat",     icon: ChatIcon     },
   { href: "/funds",   label: "Funds",    icon: FundsIcon    },
   { href: "/me",      label: "Me",       icon: MeIcon       },
 ] as const;
@@ -86,11 +96,28 @@ const NAV_ITEMS = [
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-charcoal";
 
+/** "3", or "99+". Charcoal with cream text: orange is too light for small text. */
+function UnreadBadge(props: { count: number; class?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      class={`inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-charcoal px-1.5
+              text-[11px] font-black leading-none text-cream ${props.class ?? ""}`}
+    >
+      {props.count > 99 ? "99+" : props.count}
+    </span>
+  );
+}
+
+const unreadLabel = (count: number) => `${count} unread ${count === 1 ? "message" : "messages"}`;
+
 function NavItem(props: {
   href: string;
   label: string;
   Icon: () => JSX.Element;
   onNavigate: () => void;
+  /** Unread messages, shown as a count after the label. */
+  unread?: number;
 }) {
   const location = useLocation();
   const isActive = () =>
@@ -117,6 +144,14 @@ function NavItem(props: {
       </Show>
       <props.Icon />
       {props.label}
+      <Show when={props.unread}>
+        {(count) => (
+          <>
+            <UnreadBadge count={count()} class="ml-auto" />
+            <span class="sr-only">, {unreadLabel(count())}</span>
+          </>
+        )}
+      </Show>
     </A>
   );
 }
@@ -199,6 +234,10 @@ function GuestSkeleton() {
 export function NavBar() {
   const location = useLocation();
   const me = createAsync(() => meQuery());
+  // Keeps the app's check-in running on every page: presence and the chat badge.
+  const { unread } = usePulse();
+  // On /chat the messages are on screen, so there's nothing to flag.
+  const unreadShown = () => (location.pathname.startsWith("/chat") ? 0 : unread());
   const [open, setOpen] = createSignal(false);
   const [signingOut, setSigningOut] = createSignal(false);
   const [signOutFailed, setSignOutFailed] = createSignal(false);
@@ -302,8 +341,20 @@ export function NavBar() {
           Bach
         </span>
 
-        {/* Balance spacer */}
-        <div class="w-11" />
+        {/* Chat shortcut, with the unread count (also balances the hamburger) */}
+        <A
+          href="/chat"
+          aria-label={unreadShown() > 0 ? `Chat, ${unreadLabel(unreadShown())}` : "Chat"}
+          class={`relative w-11 h-11 flex items-center justify-center rounded-lg
+                  text-charcoal/75 hover:text-charcoal hover:bg-charcoal/6
+                  active:scale-95 transition-all ${focusRing}`}
+          activeClass="text-charcoal"
+        >
+          <ChatIcon />
+          <Show when={unreadShown() > 0}>
+            <UnreadBadge count={unreadShown()} class="absolute right-0.5 top-0.5 ring-2 ring-cream" />
+          </Show>
+        </A>
       </header>
 
       {/* Backdrop */}
@@ -362,6 +413,7 @@ export function NavBar() {
                 label={item.label}
                 Icon={item.icon}
                 onNavigate={close}
+                unread={item.href === "/chat" ? unreadShown() : undefined}
               />
             )}
           </For>

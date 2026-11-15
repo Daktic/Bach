@@ -15,6 +15,13 @@
       "when": 1794757174857,
       "tag": "0001_flight_legs",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794759317646,
+      "tag": "0002_crew_chat",
+      "breakpoints": true
     }
   ]
 }

@@ -21,9 +21,10 @@ Options considered for storage were Supabase (Postgres, heavier than needed), Tu
 2. **The database holds what guests enter**:
 
    ```
-   flights          guest_id, direction (in|out), flight_number, airline, origin,
-                    destination, departs_at, arrives_at, updated_at
-                    primary key (guest_id, direction)
+   flights          guest_id, direction (in|out), leg (0, 1, … in departure order),
+                    flight_number, airline, origin, destination, departs_at,
+                    arrives_at, updated_at
+                    primary key (guest_id, direction, leg)
    guest_travel     guest_id (pk), driving (bool), status (home|car|plane|arrived), updated_at
    guest_profiles   guest_id (pk), display_name?, avatar_data_url?, updated_at
    ```

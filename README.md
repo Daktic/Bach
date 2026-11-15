@@ -98,7 +98,7 @@ In dev, `?mockDate=2027-04-10` or `?mockDate=2027-04-08T14:00` (read as Arizona 
 ### Checks
 
 ```bash
-pnpm test        # unit tests (Vitest): time zones, invite list, flights, funds, database store
+pnpm test        # unit tests (Vitest): time zones, invite list, flights, funds, database store, chat
 pnpm typecheck   # TypeScript
 ```
 

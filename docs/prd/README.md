@@ -151,9 +151,25 @@ Shared costs (house, party bus, golf, dinner) each have a goal and a per-guest s
 
 | ID | Requirement | Pri | State |
 |----|-------------|-----|-------|
-| NAV-1 | Hamburger drawer with Timeline, Flights, Funds, Me | P0 | ✅ |
+| NAV-1 | Hamburger drawer with Timeline, Flights, Chat, Funds, Me | P0 | ✅ |
 | NAV-2 | Sign-out lives in the drawer footer | P1 | ✅ |
 | NAV-3 | Installable as a PWA (manifest + icon) | P2 | ✅ manifest and icons; not yet tested on a real phone |
+
+### 6.6 Crew chat (`/chat`)
+
+One group chat for everyone on the trip, styled after iMessage ([ADR 0011](../adr/0011-crew-chat-in-turso-with-polling.md)).
+
+| ID | Requirement | Pri | State |
+|----|-------------|-----|-------|
+| CH-1 | Any guest can post text messages to one shared chat; the sender is always the signed-in guest | P1 | ✅ |
+| CH-2 | Each message shows who sent it and when: own messages on the right, others' on the left with name and photo, time headers between gaps, tap a bubble for its time | P1 | ✅ |
+| CH-3 | New messages appear without a reload (within about 3 seconds while the chat is open) | P1 | ✅ polling |
+| CH-4 | A message that fails to send can be retried without posting twice, or deleted | P1 | ✅ |
+| CH-5 | The nav shows how many messages the guest hasn't read | P2 | ✅ badge on the header chat button and the drawer item |
+| CH-6 | The chat shows who has the app open, in the "Who's here" circles | P2 | ✅ teal ring and dot when online |
+| CH-7 | Links are clickable; a message of one to three emoji shows large | P2 | ✅ |
+| CH-8 | Edit or unsend a message | P3 | ⬜ |
+| CH-9 | Push notifications for new messages | P3 | ⬜ needs web push; iOS only for home-screen apps |
 
 ---
 
@@ -192,11 +208,14 @@ travel_status  guest_id, status (home|car|plane|arrived), updated_at
 pools          id, title, description, image?, target_amount, due_date?, sort  (hand-seeded)
 pool_shares    pool_id, guest_id, amount                                      (hand-seeded)
 contributions  id, pool_id, guest_id, amount, stripe_session_id (unique), paid_at
+chat_messages  id (autoincrement), client_id (unique), guest_id, body, created_at
+chat_reads     guest_id, last_read_id, updated_at
+guest_presence guest_id, last_seen_at
 ```
 
 `currentAmount` and "my contribution" become derived values from `contributions`, not stored fields. The unique `stripe_session_id` makes webhook handling idempotent.
 
-**Where data lives now:** `guests` lives in `src/lib/data/guests.ts`. `guest_emails` is the `GUEST_EMAILS` environment variable, because the repo is public ([ADR 0009](../adr/0009-invite-only-auth-with-env-guest-list.md)). `pools` and `pool_shares` live in `src/lib/data/funds.ts`. Flights, travel statuses and profile edits are in Turso (`src/lib/server/schema.ts`). Contributions are read from Stripe (ADR 0010). The pages read all of it through the server functions in `src/lib/api/`, so swapping in the database only touches that layer and the data files.
+**Where data lives now:** `guests` lives in `src/lib/data/guests.ts`. `guest_emails` is the `GUEST_EMAILS` environment variable, because the repo is public ([ADR 0009](../adr/0009-invite-only-auth-with-env-guest-list.md)). `pools` and `pool_shares` live in `src/lib/data/funds.ts`. Flights, travel statuses, profile edits, chat messages and presence are in Turso (`src/lib/server/schema.ts`). Contributions are read from Stripe (ADR 0010). The pages read all of it through the server functions in `src/lib/api/`, so swapping in the database only touches that layer and the data files.
 
 ---
 

@@ -2,6 +2,7 @@ import { createAsync } from "@solidjs/router";
 import { createEffect, createMemo, createSignal, For, Match, onCleanup, onMount, Show, Switch } from "solid-js";
 import { createStore } from "solid-js/store";
 import { hasNoArrivalPlan, nextTravelStatus } from "~/components/flights/flight-board";
+import { RingAvatar } from "./RingAvatar";
 import { CarIcon, CheckIcon, HomeIcon, PlaneIcon } from "~/components/flights/icons";
 import { getCrew } from "~/lib/api/crew";
 import { loadMyProfile, onMyProfileChange } from "~/lib/client/my-profile";
@@ -49,39 +50,18 @@ function AvatarCircle(props: {
   noFlight: boolean;
   showBadge: boolean;
 }) {
-  const [broken, setBroken] = createSignal(false);
-  const ring = () => (props.noFlight ? NO_FLIGHT.ring : STATUS_CONFIG[props.status].ring);
-
   return (
-    <div class="relative" aria-hidden="true">
-      <div
-        class={`paper-card flex h-12 w-12 items-center justify-center overflow-hidden rounded-full
-                border-[3px] transition-colors duration-300 ${ring()} ${props.noFlight ? "opacity-40" : ""}`}
-      >
-        <Show
-          when={props.photo && !broken()}
-          fallback={<span class="select-none text-xs font-bold text-charcoal/75">{props.initials}</span>}
-        >
-          <img
-            src={props.photo!}
-            alt=""
-            referrerpolicy="no-referrer"
-            onError={() => setBroken(true)}
-            class="h-full w-full object-cover"
-          />
-        </Show>
-      </div>
-
-      <Show when={props.showBadge}>
-        <div
-          class={`absolute -bottom-[11px] left-1/2 flex h-[22px] w-[22px] -translate-x-1/2
-                  items-center justify-center rounded-full border-[1.5px]
-                  transition-colors duration-300 ${STATUS_CONFIG[props.status].badge}`}
-        >
-          <StatusIcon status={props.status} />
-        </div>
-      </Show>
-    </div>
+    <RingAvatar
+      initials={props.initials}
+      photo={props.photo}
+      ring={props.noFlight ? NO_FLIGHT.ring : STATUS_CONFIG[props.status].ring}
+      faded={props.noFlight}
+      badge={
+        props.showBadge
+          ? { class: STATUS_CONFIG[props.status].badge, content: <StatusIcon status={props.status} /> }
+          : undefined
+      }
+    />
   );
 }
 

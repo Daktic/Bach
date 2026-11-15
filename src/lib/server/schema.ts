@@ -1,4 +1,4 @@
-import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // What guests enter themselves (ADR 0007). Hand-maintained data (guests,
 // pools, activities) stays in src/lib/data/ for now.
@@ -46,4 +46,41 @@ export const guestProfiles = sqliteTable("guest_profiles", {
   // 256px JPEG as a data URL (about 20–40 KB).
   avatarDataUrl: text("avatar_data_url"),
   updatedAt: updatedAt(),
+});
+
+/**
+ * The crew chat (ADR 0011). Ids only grow (AUTOINCREMENT), so "everything
+ * after id N" is how phones catch up. `client_id` is made by the sender's
+ * browser, so a retried send can't post the same message twice.
+ */
+export const chatMessages = sqliteTable(
+  "chat_messages",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    clientId: text("client_id").notNull().unique(),
+    guestId: text("guest_id").notNull(),
+    body: text("body").notNull(),
+    // Server clock, ISO 8601 UTC ("2027-04-08T21:42:05.123Z").
+    createdAt: text("created_at").notNull(),
+  },
+  // For the send rate limit: a guest's recent messages.
+  (t) => [index("chat_messages_guest_time").on(t.guestId, t.createdAt)],
+);
+
+/** How far each guest has read, for the unread badge. */
+export const chatReads = sqliteTable("chat_reads", {
+  guestId: text("guest_id").primaryKey(),
+  lastReadId: integer("last_read_id").notNull().default(0),
+  updatedAt: updatedAt(),
+});
+
+/**
+ * When each guest last had the app open (ADR 0011). Every open page checks in
+ * every 20 seconds while it's on screen; a guest seen in the last 50 seconds
+ * shows as online in the chat. Hiding the app deletes the row.
+ */
+export const guestPresence = sqliteTable("guest_presence", {
+  guestId: text("guest_id").primaryKey(),
+  // Server clock, ISO 8601 UTC.
+  lastSeenAt: text("last_seen_at").notNull(),
 });

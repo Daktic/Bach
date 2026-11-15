@@ -5,6 +5,10 @@
   --color-orange: #ef6917;
   --color-cream: #f9f7db;
   --color-charcoal: #454346;
+  /* Chat bubbles (opaque, so a bubble and its tail blend into one shape).
+     Charcoal text passes 4.5:1 on both. */
+  --color-bubble-me: #62d8c7;
+  --color-bubble-them: #e8e4cb;
 }
 
 *,
