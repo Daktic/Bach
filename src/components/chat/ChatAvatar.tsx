@@ -4,7 +4,7 @@ export interface ChatPerson {
   id: string;
   name: string;
   initials: string;
-  /** Uploaded profile photo (a data URL), when set. */
+  /** Uploaded photo (a data URL) or account photo URL, when there is one. */
   image?: string;
 }
 

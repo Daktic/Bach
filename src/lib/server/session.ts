@@ -6,7 +6,9 @@ import { getRequestEvent } from "solid-js/web";
 import type { RequestEvent } from "solid-js/web";
 import { authConfig } from "~/lib/auth";
 import { withForwardedOrigin } from "~/lib/server/forwarded";
+import { getDb } from "~/lib/server/db";
 import { findGuestByEmail } from "~/lib/server/guest-list";
+import { rememberAccountImage } from "~/lib/server/store";
 import type { Guest } from "~/lib/types";
 
 /** A signed-in, invited guest for the current request. */
@@ -17,6 +19,25 @@ export interface CurrentGuest {
 }
 
 const LOCALS_KEY = "bach:currentGuest";
+
+// Account photo URLs this server instance has already saved, by guest id, so
+// the database is written once per guest (and again only if the photo changes).
+const savedAccountImages = new Map<string, string>();
+
+/**
+ * Saves a guest's sign-in photo so the crew sees it (avatars fall back to it
+ * when no photo was uploaded). Apple accounts have none; a missing photo never
+ * clears one saved from another sign-in. Failures only cost the photo.
+ */
+async function shareAccountImage(guestId: string, image: string | null): Promise<void> {
+  if (!image || savedAccountImages.get(guestId) === image) return;
+  try {
+    await rememberAccountImage(await getDb(), guestId, image);
+    savedAccountImages.set(guestId, image);
+  } catch (err) {
+    console.error("[session] could not save account photo", err);
+  }
+}
 
 // "authjs.session-token" over http, "__Secure-authjs.session-token" over https,
 // with ".0", ".1"… suffixes when a large token is split across cookies.
@@ -65,6 +86,7 @@ export async function resolveCurrentGuest(
     const guest = findGuestByEmail(email);
     if (guest && email) {
       current = { guest, email, image: session?.user?.image ?? null };
+      await shareAccountImage(guest.id, current.image);
     }
     // Pass the session cookie on when it refreshes an invited guest's session,
     // or when Auth.js is clearing a session that's no longer valid. Other

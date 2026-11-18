@@ -1,0 +1,1 @@
+ALTER TABLE `guest_profiles` ADD `account_image_url` text;

@@ -24,7 +24,7 @@ export async function getCrew(): Promise<CrewMemberView[]> {
       id: g.id,
       name: profile?.name ?? g.name,
       initials: g.initials,
-      image: profile?.avatarDataUrl,
+      image: profile?.avatarDataUrl ?? profile?.accountImageUrl,
       arrivesBy: plan ? (plan.driving ? "drive" : "fly") : g.arrivesBy ?? "fly",
       hasInboundFlight: withInbound.has(g.id),
       status: plan?.status ?? mockTravelStatus[g.id] ?? "home",
