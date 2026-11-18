@@ -1,17 +1,23 @@
 import { createAsync } from "@solidjs/router";
 import { createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 import {
   addRide,
+  addRideCar,
+  autoArrangeRide,
   bookRideCar,
-  chooseRidePlan,
   getRides,
-  moveRideRider,
   releaseRideCar,
   removeRide,
+  removeRideCar,
+  seatRideRider,
+  setRideCarKind,
   setRideFare,
-  setRideRider,
   setRideSettled,
+  unseatRideRider,
 } from "~/lib/api/rides";
+import { findPlaces } from "~/lib/api/places";
+import { usePhonePosition } from "~/lib/client/position";
 import { crewQuery, meQuery } from "~/lib/queries";
 import type { RideView } from "~/lib/rides";
 import { NewRideForm } from "./NewRideForm";
@@ -27,19 +33,29 @@ export function RidesRoom() {
   const me = createAsync(() => meQuery());
   const roster = createAsync(() => crewQuery());
   const crew = createMemo(() => crewLookup(roster()));
-  const [rides, setRides] = createSignal<RideView[] | null>(null);
+  // For Lyft's pickup; asked for once the page is open.
+  const phone = usePhonePosition();
+  // A store, merged by id, so a ride or car keeps its identity across polls:
+  // an open sheet, a half-typed fare or a drag in progress survives a refresh.
+  const [state, setState] = createStore<{ rides: RideView[] | null }>({ rides: null });
   const [loadFailed, setLoadFailed] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
+  const put = (fresh: RideView[]) => setState("rides", reconcile(fresh, { key: "id" }));
+
+  // Bumped by every change, so a poll that started before one can't win.
+  let version = 0;
 
   async function refresh() {
     if (busy() || document.visibilityState !== "visible") return;
+    const asOf = version;
     try {
-      setRides(await getRides());
+      const fresh = await getRides();
+      if (asOf === version && !busy()) put(fresh);
       setLoadFailed(false);
     } catch (err) {
       console.error("[rides] couldn't load", err);
-      if (!rides()) setLoadFailed(true);
+      if (!state.rides) setLoadFailed(true);
     }
   }
 
@@ -54,30 +70,49 @@ export function RidesRoom() {
     });
   });
 
-  /** Runs a change; the server answers with every ride, fresh. */
-  async function change(run: () => Promise<RideView[]>): Promise<boolean> {
-    if (busy()) return false;
+  async function perform(run: () => Promise<RideView[]>): Promise<boolean> {
+    version++;
     setBusy(true);
     setError(null);
     try {
-      setRides(await run());
+      put(await run());
       return true;
     } catch (err) {
       setError(err instanceof Error && err.message ? err.message : "That didn't work. Try again.");
+      // The server may have changed anyway (or someone else did); show the truth.
+      try {
+        put(await getRides());
+      } catch {
+        // keep what we have
+      }
       return false;
     } finally {
       setBusy(false);
     }
   }
 
-  const days = createMemo(() => {
-    const byDay = new Map<string, RideView[]>();
-    for (const r of rides() ?? []) {
-      const d = r.departAt.slice(0, 10);
-      byDay.set(d, [...(byDay.get(d) ?? []), r]);
+  /**
+   * Runs a change; the server answers with every ride, fresh. Changes queue
+   * up, so a seat tapped while the last one is saving isn't lost.
+   */
+  let queue: Promise<unknown> = Promise.resolve();
+  function change(run: () => Promise<RideView[]>): Promise<boolean> {
+    const result = queue.then(() => perform(run));
+    queue = result.catch(() => {});
+    return result;
+  }
+
+  // Rides by day ("" for whenever), the days as plain strings so the
+  // sections stay put when the list refreshes.
+  const byDay = createMemo(() => {
+    const map = new Map<string, RideView[]>();
+    for (const r of state.rides ?? []) {
+      const d = r.departAt?.slice(0, 10) ?? "";
+      map.set(d, [...(map.get(d) ?? []), r]);
     }
-    return [...byDay];
+    return map;
   });
+  const days = () => [...byDay().keys()];
 
   return (
     <div class="space-y-5">
@@ -88,7 +123,7 @@ export function RidesRoom() {
       </Show>
 
       <Show
-        when={rides() && me()}
+        when={state.rides && me()}
         fallback={
           <Show
             when={loadFailed()}
@@ -110,10 +145,11 @@ export function RidesRoom() {
           </Show>
         }
       >
-        <RideTab rides={rides()!} me={me()!.id} crew={crew()} />
+        <RideTab rides={state.rides!} me={me()!.id} crew={crew()} />
 
         <NewRideForm
           busy={busy()}
+          search={findPlaces}
           onCreate={(ride) => change(() => addRide({ ...ride, note: ride.note || undefined }))}
         />
 
@@ -123,16 +159,16 @@ export function RidesRoom() {
             <div class="paper-card rounded-xl px-5 py-8 text-center">
               <h2 class="text-base font-black text-charcoal">No rides yet</h2>
               <p class="mt-1.5 text-sm text-charcoal/75">
-                Add one, put the crew in it, and Bach works out the cheapest cars.
+                Add one with where you're headed, then drag the crew into the seats.
               </p>
             </div>
           }
         >
           <For each={days()}>
-            {([day, list]) => (
-              <section aria-label={rideDay(day)} class="space-y-3">
-                <h2 class="text-sm font-black uppercase tracking-wide text-charcoal/75">{rideDay(day)}</h2>
-                <For each={list}>
+            {(day) => (
+              <section aria-label={day ? rideDay(day) : "Whenever"} class="space-y-3">
+                <h2 class="text-sm font-black uppercase tracking-wide text-charcoal/75">{day ? rideDay(day) : "Whenever"}</h2>
+                <For each={byDay().get(day) ?? []}>
                   {(ride) => (
                     <RideCard
                       ride={ride}
@@ -140,11 +176,16 @@ export function RidesRoom() {
                       roster={roster() ?? []}
                       crew={crew()}
                       busy={busy()}
+                      pickup={phone.position()}
+                      positionState={phone.state()}
                       actions={{
-                        setRider: (g, inRide) => void change(() => setRideRider(ride.id, g, inRide)),
-                        choosePlan: (plan) => void change(() => chooseRidePlan(ride.id, plan)),
+                        seat: (g, car, seat) => void change(() => seatRideRider(ride.id, g, car, seat)),
+                        unseat: (g) => void change(() => unseatRideRider(ride.id, g)),
+                        addCar: (kind) => void change(() => addRideCar(ride.id, kind)),
+                        removeCar: (car) => void change(() => removeRideCar(ride.id, car)),
+                        setKind: (car, kind) => void change(() => setRideCarKind(ride.id, car, kind)),
+                        autoArrange: () => void change(() => autoArrangeRide(ride.id)),
                         remove: () => void change(() => removeRide(ride.id)),
-                        move: (g, car) => void change(() => moveRideRider(ride.id, g, car)),
                         book: (car, provider) => void change(() => bookRideCar(ride.id, car, provider)),
                         release: (car) => void change(() => releaseRideCar(ride.id, car)),
                         setFare: (car, cents) => void change(() => setRideFare(ride.id, car, cents)),

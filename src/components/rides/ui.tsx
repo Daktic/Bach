@@ -40,18 +40,33 @@ export function listNames(names: readonly string[]): string {
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
+/**
+ * What a thing a finger holds must not do: show iOS's image or text callout,
+ * or select. Goes on chips, seats and the car body.
+ */
+export const holdable = "select-none [-webkit-touch-callout:none]";
+
 /** A small round photo or initials, beside a name that's always written out. */
-export function Face(props: { initials: string; image?: string; class?: string }) {
+export function Face(props: { initials: string; image?: string; size?: "sm" | "md" | "lg"; class?: string }) {
+  const size = () =>
+    props.size === "lg" ? "h-11 w-11 text-xs" : props.size === "md" ? "h-9 w-9 text-[11px]" : "h-7 w-7 text-[10px]";
   return (
     <span
       aria-hidden="true"
-      class={`paper-card inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full
-              ring-1 ring-charcoal/15 ${props.class ?? ""}`}
+      class={`paper-card inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full
+              ring-1 ring-charcoal/15 ${holdable} ${size()} ${props.class ?? ""}`}
     >
       {props.image ? (
-        <img src={props.image} alt="" referrerpolicy="no-referrer" class="h-full w-full object-cover" />
+        // The photo is decoration: a long press on it must reach the chip, not open the image.
+        <img
+          src={props.image}
+          alt=""
+          draggable={false}
+          referrerpolicy="no-referrer"
+          class={`pointer-events-none h-full w-full object-cover ${holdable}`}
+        />
       ) : (
-        <span class="select-none text-[10px] font-bold text-charcoal/75">{props.initials}</span>
+        <span class="select-none font-bold text-charcoal/75">{props.initials}</span>
       )}
     </span>
   );

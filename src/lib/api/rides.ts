@@ -3,17 +3,20 @@
 import type { RideView } from "~/lib/rides";
 import { getDb, type Db } from "~/lib/server/db";
 import {
+  addCar,
+  autoArrange,
   bookCar,
-  choosePlan,
   createRide,
   deleteRide,
   listRides,
-  moveRider,
   releaseCar,
+  removeCar,
   RideError,
+  seatRider,
+  setCarKind,
   setFare,
-  setRider,
   setSettled,
+  unseatRider,
   type NewRide,
 } from "~/lib/server/ride-store";
 import { requireGuest } from "~/lib/server/session";
@@ -48,44 +51,66 @@ export async function removeRide(rideId: number): Promise<RideView[]> {
   return guarded("delete", (db) => deleteRide(db, rideId));
 }
 
-/** Puts anyone on the trip in a ride, or takes them out. */
-export async function setRideRider(rideId: number, guestId: string, inRide: boolean): Promise<RideView[]> {
+// ─── Cars ────────────────────────────────────────────────────────────────────
+
+export async function addRideCar(rideId: number, kind: string): Promise<RideView[]> {
   await requireGuest();
-  return guarded("set rider", (db) => setRider(db, rideId, guestId, inRide === true));
+  return guarded("add car", (db) => addCar(db, rideId, kind));
 }
 
-export async function moveRideRider(rideId: number, guestId: string, car: number): Promise<RideView[]> {
+export async function removeRideCar(rideId: number, carId: number): Promise<RideView[]> {
   await requireGuest();
-  return guarded("move rider", (db) => moveRider(db, rideId, guestId, car));
+  return guarded("remove car", (db) => removeCar(db, rideId, carId));
 }
 
-/** A mix of cars, e.g. ["xl", "standard"], or null for the cheapest. */
-export async function chooseRidePlan(rideId: number, plan: string[] | null): Promise<RideView[]> {
+/** Standard (4 seats) or XL (6). Going down drops whoever sat in seats 5–6. */
+export async function setRideCarKind(rideId: number, carId: number, kind: string): Promise<RideView[]> {
   await requireGuest();
-  return guarded("choose plan", (db) => choosePlan(db, rideId, plan));
+  return guarded("car kind", (db) => setCarKind(db, rideId, carId, kind));
 }
 
-export async function bookRideCar(rideId: number, car: number, provider: string): Promise<RideView[]> {
-  const { guest } = await requireGuest();
-  return guarded("book", (db) => bookCar(db, guest.id, rideId, car, provider));
+/** Re-sorts everyone in the unbooked cars into the cheapest mix of cars. */
+export async function autoArrangeRide(rideId: number): Promise<RideView[]> {
+  await requireGuest();
+  return guarded("auto-arrange", (db) => autoArrange(db, rideId));
 }
 
-export async function releaseRideCar(rideId: number, car: number): Promise<RideView[]> {
-  const { guest } = await requireGuest();
-  return guarded("release", (db) => releaseCar(db, guest.id, rideId, car));
+// ─── Seats ───────────────────────────────────────────────────────────────────
+
+/** Puts anyone on the trip in a seat (moving or swapping as needed). */
+export async function seatRideRider(rideId: number, guestId: string, carId: number, seat: number): Promise<RideView[]> {
+  await requireGuest();
+  return guarded("seat", (db) => seatRider(db, rideId, guestId, carId, seat));
 }
 
-export async function setRideFare(rideId: number, car: number, fareCents: number | null): Promise<RideView[]> {
+export async function unseatRideRider(rideId: number, guestId: string): Promise<RideView[]> {
+  await requireGuest();
+  return guarded("unseat", (db) => unseatRider(db, rideId, guestId));
+}
+
+// ─── Booking and paying back ─────────────────────────────────────────────────
+
+export async function bookRideCar(rideId: number, carId: number, provider: string): Promise<RideView[]> {
   const { guest } = await requireGuest();
-  return guarded("fare", (db) => setFare(db, guest.id, rideId, car, fareCents));
+  return guarded("book", (db) => bookCar(db, guest.id, rideId, carId, provider));
+}
+
+export async function releaseRideCar(rideId: number, carId: number): Promise<RideView[]> {
+  const { guest } = await requireGuest();
+  return guarded("release", (db) => releaseCar(db, guest.id, rideId, carId));
+}
+
+export async function setRideFare(rideId: number, carId: number, fareCents: number | null): Promise<RideView[]> {
+  const { guest } = await requireGuest();
+  return guarded("fare", (db) => setFare(db, guest.id, rideId, carId, fareCents));
 }
 
 export async function setRideSettled(
   rideId: number,
-  car: number,
+  carId: number,
   riderId: string,
   settled: boolean,
 ): Promise<RideView[]> {
   const { guest } = await requireGuest();
-  return guarded("settle", (db) => setSettled(db, guest.id, rideId, car, riderId, settled === true));
+  return guarded("settle", (db) => setSettled(db, guest.id, rideId, carId, riderId, settled === true));
 }

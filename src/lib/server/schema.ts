@@ -1,4 +1,4 @@
-import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // What guests enter themselves (ADR 0007). Hand-maintained data (guests,
 // pools, activities) stays in src/lib/data/ for now.
@@ -89,24 +89,37 @@ export const guestPresence = sqliteTable("guest_presence", {
 });
 
 /**
- * Shared rides (ADR 0012). A ride goes from one place in ~/lib/ride-places to
- * another at an Arizona wall time. Riders are sorted into cars by
- * ~/lib/rides; `plan` is a mix of cars someone picked over the cheapest one
- * ("xl,standard"), or null for the cheapest.
+ * Shared rides (ADR 0012). A ride is a destination (searched, or one of the
+ * itinerary's spots) and the cars the crew fills seat by seat. The pickup is
+ * never stored: the apps get the booker's phone position when they tap.
  */
 export const rides = sqliteTable("rides", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  fromPlace: text("from_place").notNull(),
-  toPlace: text("to_place").notNull(),
-  // Arizona wall time, "2027-04-08T15:00".
-  departAt: text("depart_at").notNull(),
+  destName: text("dest_name").notNull(),
+  destAddress: text("dest_address").notNull().default(""),
+  destLat: real("dest_lat").notNull(),
+  destLng: real("dest_lng").notNull(),
+  // Arizona wall time, "2027-04-08T15:00", or null for "whenever we go".
+  departAt: text("depart_at"),
   note: text("note"),
-  plan: text("plan"),
   createdBy: text("created_by").notNull(),
   createdAt: text("created_at").notNull(),
 });
 
-/** Who's in each ride. `car` is set when someone moved the rider by hand. */
+/** A car in a ride: Standard (4 seats) or XL (6). Shown in id order. */
+export const rideCars = sqliteTable("ride_cars", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  rideId: integer("ride_id")
+    .notNull()
+    .references(() => rides.id, { onDelete: "cascade" }),
+  kind: text("kind", { enum: ["standard", "xl"] }).notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+/**
+ * Who sits where. `car` is a ride_cars id and `seat` its seat number, front
+ * first. One seat per guest per ride, one guest per seat.
+ */
 export const rideRiders = sqliteTable(
   "ride_riders",
   {
@@ -115,15 +128,20 @@ export const rideRiders = sqliteTable(
       .references(() => rides.id, { onDelete: "cascade" }),
     guestId: text("guest_id").notNull(),
     car: integer("car"),
+    seat: integer("seat"),
     joinedAt: text("joined_at").notNull(),
   },
-  (t) => [primaryKey({ columns: [t.rideId, t.guestId] })],
+  (t) => [
+    primaryKey({ columns: [t.rideId, t.guestId] }),
+    uniqueIndex("ride_riders_seat").on(t.rideId, t.car, t.seat),
+  ],
 );
 
 /**
- * A car someone booked. Its riders are copied in when it's booked, so the fare
- * splits between the people who were actually in it. `settled` lists the
- * riders who've paid the booker back (a JSON array of guest ids).
+ * A car someone booked (`car` is a ride_cars id). Its riders are copied in
+ * when it's booked, so the fare splits between the people who were actually
+ * in it. `settled` lists the riders who've paid the booker back (a JSON array
+ * of guest ids).
  */
 export const rideBookings = sqliteTable(
   "ride_bookings",

@@ -1,5 +1,4 @@
 import { createSignal, For, Show } from "solid-js";
-import { getRidePlace } from "~/lib/ride-places";
 import { formatCents, netBalances, rideDebts, type RideView } from "~/lib/rides";
 import { listNames, rideDay, rideTime, secondaryButton, type CrewLookup } from "./ui";
 
@@ -18,10 +17,10 @@ export function RideTab(props: { rides: RideView[]; me: string; crew: CrewLookup
   function splitwiseText(): string {
     const lines = bookedWithFare().map(({ ride, car }) => {
       const b = car.booking!;
-      const where = `${getRidePlace(ride.fromId)?.name} → ${getRidePlace(ride.toId)?.name}`;
+      const where = `to ${ride.destination.name}`;
       const others = b.riders.filter((r) => r !== b.bookerId).map((r) => props.crew(r).name);
       return (
-        `${b.provider === "uber" ? "Uber" : "Lyft"}, ${where} (${rideDay(ride.departAt)} ${rideTime(ride.departAt)}): ` +
+        `${b.provider === "uber" ? "Uber" : "Lyft"} ${where}${ride.departAt ? ` (${rideDay(ride.departAt)} ${rideTime(ride.departAt)})` : ""}: ` +
         `${formatCents(b.fareCents!)} paid by ${props.crew(b.bookerId).name}, split equally with ${listNames(others)}`
       );
     });

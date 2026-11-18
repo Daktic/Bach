@@ -1,127 +1,126 @@
-import { createSignal, For, Show } from "solid-js";
-import { getRidePlace, lyftLink, uberLink } from "~/lib/ride-places";
+import { createEffect, createSignal, For, on, Show } from "solid-js";
+import { lyftLink, uberLink, type PhonePosition } from "~/lib/ride-places";
+import type { PositionState } from "~/lib/client/position";
 import {
   CAR_KINDS,
   formatCents,
   parseFare,
+  ridersIn,
   splitFare,
   type CarView,
   type RideProvider,
   type RideView,
 } from "~/lib/rides";
+import { CarOutline } from "./CarOutline";
+import { createLongPress, type DragState, type SeatTarget } from "./drag";
 import { Face, focusRing, primaryButton, secondaryButton, textButton, type CrewLookup } from "./ui";
 
 export interface CarActions {
-  book: (car: number, provider: RideProvider) => void;
-  release: (car: number) => void;
-  setFare: (car: number, cents: number | null) => void;
-  setSettled: (car: number, riderId: string, settled: boolean) => void;
-  move: (guestId: string, car: number) => void;
+  book: (carId: number, provider: RideProvider) => void;
+  release: (carId: number) => void;
+  setFare: (carId: number, cents: number | null) => void;
+  setSettled: (carId: number, riderId: string, settled: boolean) => void;
 }
 
 const PROVIDER = { uber: "Uber", lyft: "Lyft" } as const;
 
-/** What to pick in the app, since a link can't choose the car type for Uber. */
+/** What to pick in the app: Lyft's link sets it, Uber's can't. */
 const appCarName = (provider: RideProvider, kind: CarView["kind"]) =>
   provider === "uber" ? (kind === "xl" ? "UberXL" : "UberX") : kind === "xl" ? "Lyft XL" : "Lyft";
 
-/** One car in a ride: who's in it, the app buttons, and once booked, the fare split. */
+/**
+ * One car in a ride: its outline with seats, the size badge (tap, or
+ * long-press the car, to change it), the Uber and Lyft buttons, and once
+ * booked, the fare split.
+ */
 export function CarBox(props: {
   ride: RideView;
   car: CarView;
+  carNo: number;
   me: string;
   crew: CrewLookup;
   busy: boolean;
-  /** The rider picked to move, if any. */
-  moving: string | null;
-  setMoving: (guestId: string | null) => void;
+  drag: DragState | null;
+  over: SeatTarget | null;
+  picked: string | null;
+  /** The phone's position for Lyft's pickup, and whether it's coming. */
+  pickup: PhonePosition | null;
+  positionState: PositionState;
+  onSeatTap: (seat: number) => void;
+  onSeatPointerDown: (e: PointerEvent, guestId: string) => void;
+  wasDrag: () => boolean;
+  onOpenKind: () => void;
   actions: CarActions;
 }) {
-  const from = () => getRidePlace(props.ride.fromId)!;
-  const to = () => getRidePlace(props.ride.toId)!;
-  const full = () => props.car.riders.length >= props.car.seats;
-  const canMove = () => !props.ride.locked && props.ride.cars.length > 1;
-  const movingHere = () => props.moving !== null && !props.car.riders.includes(props.moving);
+  const to = () => props.ride.destination;
+  const riders = () => ridersIn(props.car);
+  const open = () => props.car.booking === null;
   // After "Open in Uber", ask whether they booked it there.
   const [opened, setOpened] = createSignal<RideProvider | null>(null);
+  // Once the car's booked (by them or someone else), the question's answered.
+  createEffect(() => {
+    if (props.car.booking) setOpened(null);
+  });
+  const longPress = createLongPress(() => {
+    if (open()) props.onOpenKind();
+  });
 
   return (
     <section
-      aria-label={`Car ${props.car.index + 1}, ${CAR_KINDS[props.car.kind].label}`}
-      class={`rounded-xl border p-3 ${props.car.booking ? "border-teal bg-teal/10" : "border-charcoal/15 bg-cream/50"}`}
+      aria-label={`Car ${props.carNo}, ${CAR_KINDS[props.car.kind].label}, ${riders().length} of ${props.car.seats.length} seats taken`}
+      class={`rounded-2xl p-3 ring-1 ${open() ? "bg-cream/40 ring-charcoal/10" : "bg-teal/5 ring-teal/60"}`}
     >
       <div class="flex items-center justify-between gap-2">
-        <h4 class="text-sm font-black text-charcoal">
-          Car {props.car.index + 1}
-          <span class="ml-2 rounded-full bg-charcoal px-2 py-0.5 text-[11px] font-black uppercase tracking-wide text-cream">
-            {CAR_KINDS[props.car.kind].label}
-          </span>
-        </h4>
-        <span class="text-xs font-semibold text-charcoal/75">
-          {props.car.riders.length} of {props.car.seats} seats
-        </span>
-      </div>
-
-      {/* Riders. Tap one, then "Move here" on another car. */}
-      <ul class="mt-2 flex flex-wrap gap-1.5">
-        <For each={props.car.riders}>
-          {(id) => {
-            const person = () => props.crew(id);
-            const picked = () => props.moving === id;
-            return (
-              <li>
-                <Show
-                  when={canMove()}
-                  fallback={
-                    <span class="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-cream/80 py-1 pl-1 pr-3 text-sm font-semibold text-charcoal ring-1 ring-charcoal/10">
-                      <Face initials={person().initials} image={person().image} />
-                      {person().name}
-                    </span>
-                  }
-                >
-                  <button
-                    type="button"
-                    aria-pressed={picked()}
-                    aria-label={picked() ? `${person().name}, picked to move` : `Move ${person().name}`}
-                    onClick={() => props.setMoving(picked() ? null : id)}
-                    class={`inline-flex min-h-9 items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-sm font-semibold
-                            text-charcoal ring-1 transition-colors ${focusRing}
-                            ${picked() ? "bg-orange/20 ring-orange" : "bg-cream/80 ring-charcoal/10 hover:bg-charcoal/5"}`}
-                  >
-                    <Face initials={person().initials} image={person().image} />
-                    {person().name}
-                  </button>
-                </Show>
-              </li>
-            );
-          }}
-        </For>
-        <Show when={props.car.riders.length === 0}>
-          <li class="text-sm text-charcoal/75">Empty</li>
-        </Show>
-      </ul>
-
-      <Show when={canMove() && movingHere()}>
+        <h4 class="text-sm font-black text-charcoal">Car {props.carNo}</h4>
         <button
           type="button"
-          disabled={props.busy}
-          onClick={() => {
-            props.actions.move(props.moving!, props.car.index);
-            props.setMoving(null);
-          }}
-          class={`${secondaryButton} mt-2 w-full border-dashed`}
+          disabled={!open()}
+          onClick={props.onOpenKind}
+          aria-label={`${CAR_KINDS[props.car.kind].label}, ${props.car.seats.length} seats. Change size`}
+          class={`inline-flex min-h-9 items-center gap-1.5 rounded-full bg-charcoal px-3 text-[11px] font-black uppercase
+                  tracking-wide text-cream disabled:opacity-70 ${focusRing}`}
         >
-          Move {props.crew(props.moving!).name} here{full() ? " (swaps one rider)" : ""}
+          {CAR_KINDS[props.car.kind].label}
+          <span class="font-semibold normal-case tracking-normal text-cream/80">· {props.car.seats.length} seats</span>
+          <Show when={open()}>
+            <svg viewBox="0 0 24 24" fill="currentColor" class="h-3.5 w-3.5" aria-hidden="true">
+              <path d="M7 10l5 5 5-5z" />
+            </svg>
+          </Show>
         </button>
-      </Show>
+      </div>
+
+      {/* The car. A long press anywhere on it opens the size picker; the
+          click that follows is swallowed so a seat doesn't open too. */}
+      <div {...longPress.handlers} class="mt-1">
+        <CarOutline
+          rideId={props.ride.id}
+          car={props.car}
+          crew={props.crew}
+          me={props.me}
+          drag={props.drag}
+          over={props.over}
+          picked={props.picked}
+          onSeatTap={props.onSeatTap}
+          onSeatPointerDown={props.onSeatPointerDown}
+          swallowClick={() => {
+            const a = props.wasDrag();
+            const b = longPress.swallow();
+            return a || b;
+          }}
+        />
+      </div>
 
       <Show
         when={props.car.booking}
         fallback={
-          <Show when={props.car.riders.length > 0}>
-            <div class="mt-3 grid grid-cols-2 gap-2">
+          <Show
+            when={riders().length > 0}
+            fallback={<p class="mt-1 text-center text-xs text-charcoal/75">Drag people in, or tap a seat.</p>}
+          >
+            <div class="mt-2 grid grid-cols-2 gap-2">
               <a
-                href={uberLink(from(), to())}
+                href={uberLink(to())}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setOpened("uber")}
@@ -130,7 +129,7 @@ export function CarBox(props: {
                 Open in Uber
               </a>
               <a
-                href={lyftLink(from(), to(), props.car.kind)}
+                href={lyftLink(to(), props.car.kind, props.pickup)}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setOpened("lyft")}
@@ -140,24 +139,32 @@ export function CarBox(props: {
               </a>
             </div>
             <p class="mt-1.5 text-xs text-charcoal/75">
-              Pick {appCarName("uber", props.car.kind)} or {appCarName("lyft", props.car.kind)} in the app.
-              <Show when={!from().lat}> Pickup is wherever your phone is.</Show>
+              {riders().length} {riders().length === 1 ? "rider" : "riders"} to {to().name}, picked up where your phone is.
+              Lyft opens on {appCarName("lyft", props.car.kind)}; in Uber pick {appCarName("uber", props.car.kind)}.
+              <Show when={props.pickup === null}>
+                {" "}
+                {props.positionState === "denied"
+                  ? "Location is off for Bach, so Lyft opens without the destination; Uber still works."
+                  : props.positionState === "unavailable"
+                    ? "Without your location Lyft opens without the destination; Uber still works."
+                    : "Finding your location for Lyft…"}
+              </Show>
             </p>
             <Show
               when={opened()}
               fallback={
-                <div class="mt-1 flex gap-1">
-                  <button type="button" class={textButton} disabled={props.busy} onClick={() => props.actions.book(props.car.index, "uber")}>
+                <div class="mt-1 flex flex-wrap gap-1">
+                  <button type="button" class={textButton} disabled={props.busy} onClick={() => props.actions.book(props.car.id, "uber")}>
                     I booked it on Uber
                   </button>
-                  <button type="button" class={textButton} disabled={props.busy} onClick={() => props.actions.book(props.car.index, "lyft")}>
+                  <button type="button" class={textButton} disabled={props.busy} onClick={() => props.actions.book(props.car.id, "lyft")}>
                     on Lyft
                   </button>
                 </div>
               }
             >
               {(provider) => (
-                <div role="group" aria-label="Did you book it?" class="mt-2 rounded-lg bg-orange/10 p-2.5">
+                <div role="group" aria-label="Did you book it?" class="mt-2 rounded-xl bg-orange/10 p-2.5">
                   <p class="text-sm font-semibold text-charcoal">Did you book this car on {PROVIDER[provider()]}?</p>
                   <div class="mt-2 flex gap-2">
                     <button
@@ -165,7 +172,7 @@ export function CarBox(props: {
                       class={primaryButton}
                       disabled={props.busy}
                       onClick={() => {
-                        props.actions.book(props.car.index, provider());
+                        props.actions.book(props.car.id, provider());
                         setOpened(null);
                       }}
                     >
@@ -181,7 +188,9 @@ export function CarBox(props: {
           </Show>
         }
       >
-        {(booking) => <Booked car={props.car} booking={booking()} me={props.me} crew={props.crew} busy={props.busy} actions={props.actions} />}
+        {(booking) => (
+          <Booked car={props.car} booking={booking()} me={props.me} crew={props.crew} busy={props.busy} actions={props.actions} />
+        )}
       </Show>
     </section>
   );
@@ -199,9 +208,10 @@ function Booked(props: {
   const mine = () => props.booking.bookerId === props.me;
   const shares = () => (props.booking.fareCents === null ? null : splitFare(props.booking.fareCents, props.booking.riders));
   const owers = () => props.booking.riders.filter((r) => r !== props.booking.bookerId);
-  const [fareText, setFareText] = createSignal(
-    props.booking.fareCents === null ? "" : (props.booking.fareCents / 100).toFixed(2),
-  );
+  const [fareText, setFareText] = createSignal("");
+  // Shows the saved fare, and follows it when the booker changes it (also on
+  // their other phone); a half-typed figure stays while the fare's the same.
+  createEffect(on(() => props.booking.fareCents, (cents) => setFareText(cents === null ? "" : (cents / 100).toFixed(2))));
   const [fareError, setFareError] = createSignal(false);
 
   function saveFare(e: SubmitEvent) {
@@ -212,11 +222,11 @@ function Booked(props: {
       return;
     }
     setFareError(false);
-    props.actions.setFare(props.car.index, cents);
+    props.actions.setFare(props.car.id, cents);
   }
 
   return (
-    <div class="mt-3 space-y-3">
+    <div class="mt-2 space-y-3">
       <p class="text-sm text-charcoal">
         <span class="font-black">{mine() ? "You" : booker().name}</span> booked this car on{" "}
         {PROVIDER[props.booking.provider]}.
@@ -269,16 +279,17 @@ function Booked(props: {
                 return (
                   <li class="flex min-h-11 items-center gap-2 text-sm text-charcoal">
                     <Face initials={person().initials} image={person().image} />
-                    <span class={`flex-1 ${settled() ? "text-charcoal/60 line-through" : ""}`}>
+                    <span class={`flex-1 ${settled() ? "line-through" : ""}`}>
                       {id === props.me ? "You owe" : `${person().name} owes`} {mine() ? "you" : booker().name}{" "}
                       <span class="font-black">{formatCents(split().get(id) ?? 0)}</span>
                     </span>
-                    <label class={`flex items-center gap-1.5 text-xs font-semibold ${canMark() ? "text-charcoal" : "text-charcoal/60"}`}>
+                    <label class={`flex min-h-11 items-center gap-1.5 px-2 text-xs font-semibold ${canMark() ? "text-charcoal" : "text-charcoal/75"}`}>
                       <input
                         type="checkbox"
                         checked={settled()}
                         disabled={!canMark() || props.busy}
-                        onChange={(e) => props.actions.setSettled(props.car.index, id, e.currentTarget.checked)}
+                        onChange={(e) => props.actions.setSettled(props.car.id, id, e.currentTarget.checked)}
+                        aria-label={`${id === props.me ? "You" : person().name} paid back ${formatCents(split().get(id) ?? 0)}`}
                         class="h-5 w-5 accent-teal"
                       />
                       Paid back
@@ -292,7 +303,7 @@ function Booked(props: {
       </Show>
 
       <Show when={mine()}>
-        <button type="button" class={textButton} disabled={props.busy} onClick={() => props.actions.release(props.car.index)}>
+        <button type="button" class={textButton} disabled={props.busy} onClick={() => props.actions.release(props.car.id)}>
           Give up this booking
         </button>
       </Show>

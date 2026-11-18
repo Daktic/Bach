@@ -1,179 +1,275 @@
 import { createSignal, For, Show } from "solid-js";
-import { getRidePlace } from "~/lib/ride-places";
-import { costOf, describePlan, formatPlan, type CarKind, type RideView } from "~/lib/rides";
+import { Portal } from "solid-js/web";
+import type { PhonePosition } from "~/lib/ride-places";
+import type { PositionState } from "~/lib/client/position";
+import { MAX_CARS, ridersOf, type CarKind, type CarView, type RideView } from "~/lib/rides";
 import type { CrewMemberView } from "~/lib/types";
 import { CarBox, type CarActions } from "./CarBox";
-import { Face, focusRing, primaryButton, rideTime, secondaryButton, textButton, type CrewLookup } from "./ui";
+import { createSeatDrag } from "./drag";
+import { KindPicker, SeatPicker } from "./pickers";
+import { Face, focusRing, holdable, rideTime, secondaryButton, textButton, type CrewLookup } from "./ui";
 
 export interface RideActions extends CarActions {
-  setRider: (guestId: string, inRide: boolean) => void;
-  choosePlan: (plan: CarKind[] | null) => void;
+  seat: (guestId: string, carId: number, seat: number) => void;
+  unseat: (guestId: string) => void;
+  addCar: (kind: CarKind) => void;
+  removeCar: (carId: number) => void;
+  setKind: (carId: number, kind: CarKind) => void;
+  autoArrange: () => void;
   remove: () => void;
 }
 
-/** One ride: where and when, who's in it, which cars, and each car. */
+/**
+ * One ride: where and when, the bench of people with no seat yet, and a car
+ * outline per car. People get into seats by dragging, or by tapping them
+ * on the bench and then a seat, or by tapping a seat and picking a name.
+ */
 export function RideCard(props: {
   ride: RideView;
   me: string;
   roster: readonly CrewMemberView[];
   crew: CrewLookup;
   busy: boolean;
+  pickup: PhonePosition | null;
+  positionState: PositionState;
   actions: RideActions;
 }) {
-  const from = () => getRidePlace(props.ride.fromId)?.name ?? props.ride.fromId;
-  const to = () => getRidePlace(props.ride.toId)?.name ?? props.ride.toId;
-  const imIn = () => props.ride.riders.includes(props.me);
-  const [editing, setEditing] = createSignal(false);
-  const [moving, setMoving] = createSignal<string | null>(null);
-  const cheapest = () => props.ride.options[0];
+  const to = () => props.ride.destination.name;
+  const seated = () => new Set(ridersOf(props.ride));
+  const bench = () => props.roster.filter((p) => !seated().has(p.id));
+  const openCars = () => props.ride.cars.filter((c) => !c.booking);
+  const allBooked = () => props.ride.cars.length > 0 && openCars().length === 0;
+
+  // A bench person picked by tap, waiting for a seat tap.
+  const [picked, setPicked] = createSignal<string | null>(null);
+  const [seatSheet, setSeatSheet] = createSignal<{ car: CarView; seat: number } | null>(null);
+  const [kindSheet, setKindSheet] = createSignal<CarView | null>(null);
+
+  const drag = createSeatDrag(props.ride.id, (guestId, target) => {
+    setPicked(null);
+    props.actions.seat(guestId, target.carId, target.seat);
+  });
+
+  function onSeatTap(car: CarView, seat: number) {
+    if (car.booking) return;
+    const who = picked();
+    if (who) {
+      setPicked(null);
+      props.actions.seat(who, car.id, seat);
+      return;
+    }
+    setSeatSheet({ car, seat });
+  }
+
+  // The sheet shows the live seat, not the one captured when it opened.
+  const liveSeatSheet = () => {
+    const s = seatSheet();
+    if (!s) return null;
+    const car = props.ride.cars.find((c) => c.id === s.car.id);
+    return car && !car.booking ? { car, seat: s.seat } : null;
+  };
+  const liveKindSheet = () => {
+    const k = kindSheet();
+    const car = k && props.ride.cars.find((c) => c.id === k.id);
+    return car && !car.booking ? car : null;
+  };
+  const carNo = (car: CarView) => props.ride.cars.findIndex((c) => c.id === car.id) + 1;
+
 
   return (
-    <article class="paper-card rounded-2xl p-4">
-      <header class="flex items-start justify-between gap-3">
-        <div class="min-w-0">
-          <p class="text-xs font-black uppercase tracking-wide text-charcoal/75">{rideTime(props.ride.departAt)}</p>
-          <h3 class="mt-0.5 text-base font-black leading-snug text-charcoal">
-            {from()} <span aria-label="to">→</span> {to()}
-          </h3>
-          <Show when={props.ride.note}>
-            <p class="mt-0.5 text-sm text-charcoal/75">{props.ride.note}</p>
-          </Show>
-        </div>
-        <Show when={!props.ride.locked}>
-          <button
-            type="button"
-            class={imIn() ? secondaryButton : primaryButton}
-            disabled={props.busy}
-            onClick={() => props.actions.setRider(props.me, !imIn())}
-          >
-            {imIn() ? "I'm out" : "I'm in"}
-          </button>
+    <article class="paper-card rounded-2xl p-4" aria-busy={props.busy}>
+      <header class="min-w-0">
+        <p class="text-xs font-black uppercase tracking-wide text-charcoal/75">
+          {props.ride.departAt ? rideTime(props.ride.departAt) : "Whenever"}
+        </p>
+        <h3 class="mt-0.5 text-base font-black leading-snug text-charcoal">
+          <span aria-hidden="true">→ </span>
+          <span class="sr-only">To </span>
+          {to()}
+        </h3>
+        <Show when={props.ride.destination.address}>
+          <p class="mt-0.5 truncate text-xs text-charcoal/75">{props.ride.destination.address}</p>
+        </Show>
+        <Show when={props.ride.note}>
+          <p class="mt-0.5 text-sm text-charcoal/75">{props.ride.note}</p>
         </Show>
       </header>
 
-      {/* Who's riding */}
-      <div class="mt-3 flex items-center gap-2">
-        <div class="flex -space-x-2" aria-hidden="true">
-          <For each={props.ride.riders.slice(0, 8)}>
-            {(id) => <Face initials={props.crew(id).initials} image={props.crew(id).image} class="ring-2 ring-cream" />}
-          </For>
-        </div>
-        <p class="flex-1 text-sm font-semibold text-charcoal">
-          {props.ride.riders.length} {props.ride.riders.length === 1 ? "rider" : "riders"}
-        </p>
-        <Show when={!props.ride.locked}>
-          <button type="button" class={textButton} aria-expanded={editing()} onClick={() => setEditing(!editing())}>
-            {editing() ? "Done" : "Who's riding"}
-          </button>
-        </Show>
-      </div>
-
-      <Show when={editing() && !props.ride.locked}>
-        <fieldset class="mt-2 rounded-xl bg-cream/60 p-2 ring-1 ring-charcoal/10">
-          <legend class="sr-only">Who's riding</legend>
-          <div class="grid grid-cols-2 gap-1">
-            <For each={props.roster}>
-              {(person) => {
-                const riding = () => props.ride.riders.includes(person.id);
-                return (
-                  <label class={`flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-charcoal hover:bg-charcoal/5`}>
-                    <input
-                      type="checkbox"
-                      checked={riding()}
-                      disabled={props.busy}
-                      onChange={(e) => props.actions.setRider(person.id, e.currentTarget.checked)}
-                      class="h-5 w-5 accent-teal"
-                    />
-                    {person.id === props.me ? `${person.name} (you)` : person.name}
-                  </label>
-                );
-              }}
-            </For>
-          </div>
-        </fieldset>
-      </Show>
-
-      <Show when={props.ride.riders.length > 0}>
-        {/* Which cars */}
-        <div class="mt-4">
-          <p class="text-sm text-charcoal">
-            <span class="font-black">{describePlan(props.ride.plan)}</span>
-            <Show
-              when={props.ride.customPlan}
-              fallback={<span class="text-charcoal/75"> · cheapest for {props.ride.riders.length}</span>}
-            >
-              <span class="text-charcoal/75"> · picked by the group</span>
+      {/* The bench: everyone without a seat. Drag a chip onto a seat, or tap
+          it and then tap a seat. */}
+      <Show when={!allBooked()}>
+        <section aria-label="Not in a car yet" class="mt-3">
+          <div class="flex items-baseline justify-between">
+            <h4 class="text-xs font-black uppercase tracking-wide text-charcoal/75">
+              Not in a car yet · {bench().length}
+            </h4>
+            <Show when={picked()}>
+              {(who) => (
+                <p class="text-xs font-semibold text-charcoal" role="status">
+                  Now tap a seat for {who() === props.me ? "yourself" : props.crew(who()).name}.{" "}
+                  <button type="button" class="underline" onClick={() => setPicked(null)}>
+                    Cancel
+                  </button>
+                </p>
+              )}
             </Show>
-          </p>
-          <Show when={!props.ride.locked && props.ride.options.length > 1}>
-            <div role="radiogroup" aria-label="Cars" class="mt-2 flex flex-wrap gap-1.5">
-              <For each={props.ride.options}>
-                {(option) => {
-                  const chosen = () => formatPlan(option) === formatPlan(props.ride.plan);
-                  const isCheapest = () => formatPlan(option) === formatPlan(cheapest());
-                  const extra = () => Math.round((costOf(option) / costOf(cheapest()) - 1) * 100);
+          </div>
+          <Show
+            when={bench().length > 0}
+            fallback={<p class="mt-1 text-sm text-charcoal/75">Everyone's got a seat.</p>}
+          >
+            {/* No context menu: a held chip is being picked up, not inspected. */}
+            <ul class="mt-1.5 flex flex-wrap gap-1.5" onContextMenu={(e) => e.preventDefault()}>
+              <For each={bench()}>
+                {(person) => {
+                  const isPicked = () => picked() === person.id;
+                  const hidden = () => drag.drag()?.guestId === person.id;
                   return (
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={chosen()}
-                      disabled={props.busy}
-                      onClick={() => !chosen() && props.actions.choosePlan(isCheapest() ? null : option)}
-                      class={`min-h-11 rounded-full px-3 text-xs font-semibold ring-1 transition-colors ${focusRing}
-                              ${chosen() ? "bg-charcoal text-cream ring-charcoal" : "bg-cream/70 text-charcoal ring-charcoal/20 hover:bg-charcoal/5"}`}
-                    >
-                      {describePlan(option)}
-                      <span class={chosen() ? "text-cream/80" : "text-charcoal/70"}>
-                        {isCheapest() ? " · cheapest" : ` · ~${extra()}% more`}
-                      </span>
-                    </button>
+                    <li>
+                      <button
+                        type="button"
+                        aria-pressed={isPicked()}
+                        aria-label={`${person.id === props.me ? `${person.name} (you)` : person.name}. ${isPicked() ? "Picked; tap a seat" : "Pick, then tap a seat"}`}
+                        disabled={openCars().length === 0}
+                        style={{ "touch-action": "pan-y" }}
+                        onPointerDown={(e) => drag.start(e, person.id)}
+                        onClick={() => {
+                          if (drag.wasDrag()) return;
+                          setPicked(isPicked() ? null : person.id);
+                        }}
+                        class={`inline-flex min-h-10 items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-sm font-semibold
+                                text-charcoal ring-1 transition-[background-color,box-shadow,opacity] ${holdable} ${focusRing}
+                                ${hidden() ? "opacity-30" : ""}
+                                ${isPicked() ? "bg-orange/20 ring-2 ring-orange" : "bg-cream/80 ring-charcoal/15 hover:bg-charcoal/5"}`}
+                      >
+                        <Face initials={person.initials} image={person.image} size="md" />
+                        {person.id === props.me ? "You" : person.name}
+                      </button>
+                    </li>
                   );
                 }}
               </For>
-            </div>
+            </ul>
           </Show>
-          <Show when={props.ride.locked}>
-            <p class="mt-1 text-xs text-charcoal/75">
-              A car's booked, so the cars are set. Whoever booked it can give it up to change them.
-            </p>
-          </Show>
-          <Show when={!props.ride.locked && props.ride.cars.length > 1}>
-            <p class="mt-1 text-xs text-charcoal/75">Tap someone to move them to another car.</p>
-          </Show>
-        </div>
-
-        <div class="mt-3 space-y-3">
-          <For each={props.ride.cars}>
-            {(car) => (
-              <CarBox
-                ride={props.ride}
-                car={car}
-                me={props.me}
-                crew={props.crew}
-                busy={props.busy}
-                moving={moving()}
-                setMoving={setMoving}
-                actions={props.actions}
-              />
-            )}
-          </For>
-        </div>
+        </section>
       </Show>
 
-      <Show when={!props.ride.locked}>
-        <div class="mt-2 flex justify-end">
+      {/* The cars */}
+      <div class="mt-3 space-y-3">
+        <For each={props.ride.cars}>
+          {(car, i) => (
+            <CarBox
+              ride={props.ride}
+              car={car}
+              carNo={i() + 1}
+              me={props.me}
+              crew={props.crew}
+              busy={props.busy}
+              drag={drag.drag()}
+              over={drag.over()}
+              picked={picked()}
+              pickup={props.pickup}
+              positionState={props.positionState}
+              onSeatTap={(seat) => onSeatTap(car, seat)}
+              onSeatPointerDown={(e, g) => drag.start(e, g)}
+              wasDrag={drag.wasDrag}
+              onOpenKind={() => setKindSheet(car)}
+              actions={props.actions}
+            />
+          )}
+        </For>
+      </div>
+
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <Show when={props.ride.cars.length < MAX_CARS}>
+          <button type="button" class={secondaryButton} disabled={props.busy} onClick={() => props.actions.addCar("standard")}>
+            + Standard car
+          </button>
+          <button type="button" class={secondaryButton} disabled={props.busy} onClick={() => props.actions.addCar("xl")}>
+            + XL car
+          </button>
+        </Show>
+        <Show when={openCars().some((c) => c.seats.some(Boolean))}>
+          <button
+            type="button"
+            class={textButton}
+            disabled={props.busy}
+            onClick={props.actions.autoArrange}
+          >
+            Auto-arrange
+          </button>
+        </Show>
+        <span class="flex-1" />
+        <Show when={!props.ride.cars.some((c) => c.booking)}>
           <button
             type="button"
             class={textButton}
             disabled={props.busy}
             onClick={() => {
-              if (confirm(`Remove the ride from ${from()} to ${to()}?`)) props.actions.remove();
+              if (confirm(`Remove the ride to ${to()}?`)) props.actions.remove();
             }}
           >
             Remove ride
           </button>
-        </div>
+        </Show>
+      </div>
+      <p class="mt-1 text-xs text-charcoal/75">
+        Tap a seat to pick who sits there, or hold someone and drag them in. Long-press a car to make it Standard or XL.
+      </p>
+
+      {/* The chip that follows the finger during a drag */}
+      <Show when={drag.drag()}>
+        {(d) => (
+          <Portal>
+            <div
+              aria-hidden="true"
+              class="pointer-events-none fixed z-[60] -translate-x-1/2 -translate-y-1/2 scale-110"
+              style={{ left: `${d().x}px`, top: `${d().y}px` }}
+            >
+              <span class="paper-card inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-3 text-sm font-semibold text-charcoal shadow-xl ring-2 ring-orange">
+                <Face initials={props.crew(d().guestId).initials} image={props.crew(d().guestId).image} size="md" />
+                {d().guestId === props.me ? "You" : props.crew(d().guestId).name}
+              </span>
+            </div>
+          </Portal>
+        )}
       </Show>
+
+      <SeatPicker
+        open={liveSeatSheet()}
+        ride={props.ride}
+        me={props.me}
+        roster={props.roster}
+        crew={props.crew}
+        busy={props.busy}
+        onPick={(g) => {
+          const s = liveSeatSheet();
+          if (s) props.actions.seat(g, s.car.id, s.seat);
+          setSeatSheet(null);
+        }}
+        onEmpty={(g) => {
+          props.actions.unseat(g);
+          setSeatSheet(null);
+        }}
+        onClose={() => setSeatSheet(null)}
+      />
+      <KindPicker
+        open={liveKindSheet()}
+        carNo={liveKindSheet() ? carNo(liveKindSheet()!) : 0}
+        crew={props.crew}
+        busy={props.busy}
+        onPick={(kind) => {
+          const car = liveKindSheet();
+          if (car) props.actions.setKind(car.id, kind);
+          setKindSheet(null);
+        }}
+        onRemove={() => {
+          const car = liveKindSheet();
+          if (car) props.actions.removeCar(car.id);
+          setKindSheet(null);
+        }}
+        onClose={() => setKindSheet(null)}
+      />
     </article>
   );
 }
