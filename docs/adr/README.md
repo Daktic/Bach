@@ -19,6 +19,7 @@ An ADR captures a significant architectural decision: the context, the decision 
 | [0009](0009-invite-only-auth-with-env-guest-list.md) | Invite-only sign-in: Auth.js JWT sessions + a guest list kept out of the repo | Proposed |
 | [0010](0010-stripe-checkout-with-stripe-as-payment-record.md) | Pool payments: Stripe Checkout, with Stripe as the payment record | Proposed |
 | [0011](0011-crew-chat-in-turso-with-polling.md) | Crew chat: messages in Turso, delivered by polling | Proposed |
+| [0012](0012-shared-rides-with-app-deep-links.md) | Shared rides: cars sorted in Bach, booked through Uber and Lyft links | Proposed |
 
 ## Process
 

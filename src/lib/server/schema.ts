@@ -87,3 +87,58 @@ export const guestPresence = sqliteTable("guest_presence", {
   // Server clock, ISO 8601 UTC.
   lastSeenAt: text("last_seen_at").notNull(),
 });
+
+/**
+ * Shared rides (ADR 0012). A ride goes from one place in ~/lib/ride-places to
+ * another at an Arizona wall time. Riders are sorted into cars by
+ * ~/lib/rides; `plan` is a mix of cars someone picked over the cheapest one
+ * ("xl,standard"), or null for the cheapest.
+ */
+export const rides = sqliteTable("rides", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  fromPlace: text("from_place").notNull(),
+  toPlace: text("to_place").notNull(),
+  // Arizona wall time, "2027-04-08T15:00".
+  departAt: text("depart_at").notNull(),
+  note: text("note"),
+  plan: text("plan"),
+  createdBy: text("created_by").notNull(),
+  createdAt: text("created_at").notNull(),
+});
+
+/** Who's in each ride. `car` is set when someone moved the rider by hand. */
+export const rideRiders = sqliteTable(
+  "ride_riders",
+  {
+    rideId: integer("ride_id")
+      .notNull()
+      .references(() => rides.id, { onDelete: "cascade" }),
+    guestId: text("guest_id").notNull(),
+    car: integer("car"),
+    joinedAt: text("joined_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.rideId, t.guestId] })],
+);
+
+/**
+ * A car someone booked. Its riders are copied in when it's booked, so the fare
+ * splits between the people who were actually in it. `settled` lists the
+ * riders who've paid the booker back (a JSON array of guest ids).
+ */
+export const rideBookings = sqliteTable(
+  "ride_bookings",
+  {
+    rideId: integer("ride_id")
+      .notNull()
+      .references(() => rides.id, { onDelete: "cascade" }),
+    car: integer("car").notNull(),
+    kind: text("kind", { enum: ["standard", "xl"] }).notNull(),
+    bookerId: text("booker_id").notNull(),
+    provider: text("provider", { enum: ["uber", "lyft"] }).notNull(),
+    riders: text("riders").notNull(),
+    settled: text("settled").notNull().default("[]"),
+    fareCents: integer("fare_cents"),
+    bookedAt: text("booked_at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.rideId, t.car] })],
+);
