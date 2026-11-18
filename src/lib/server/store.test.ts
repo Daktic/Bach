@@ -10,6 +10,7 @@ import {
   allTravelPlans,
   getProfile,
   getTravel,
+  rememberAccountImage,
   saveProfile,
   saveTravel,
   setStatus,
@@ -96,5 +97,16 @@ describe("profiles", () => {
     await expect(saveProfile(db, "gberg", { name: "x".repeat(41) })).rejects.toThrow();
     await expect(saveProfile(db, "gberg", { avatarDataUrl: "https://evil.example/x.png" })).rejects.toThrow();
     await expect(saveProfile(db, "gberg", { avatarDataUrl: "data:text/html;base64,PGgxPg==" })).rejects.toThrow();
+  });
+
+  it("keeps the account photo apart from profile edits", async () => {
+    const google = "https://lh3.googleusercontent.com/a/abc=s96-c";
+    await rememberAccountImage(db, "chris", google);
+    await saveProfile(db, "chris", { name: "Chris W" });
+    expect(await getProfile(db, "chris")).toEqual({ name: "Chris W", accountImageUrl: google });
+    expect((await allProfiles(db)).get("chris")?.accountImageUrl).toBe(google);
+
+    await rememberAccountImage(db, "chris", "javascript:alert(1)");
+    expect((await getProfile(db, "chris")).accountImageUrl).toBeUndefined();
   });
 });

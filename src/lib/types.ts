@@ -123,7 +123,7 @@ export interface CrewMemberView {
   id: string;
   name: string;
   initials: string;
-  /** The guest's uploaded profile photo (a data URL), when they've set one. */
+  /** The guest's uploaded photo (a data URL), else their sign-in account's photo URL. */
   image?: string;
   arrivesBy: ArrivalMode;
   hasInboundFlight: boolean;

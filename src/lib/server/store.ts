@@ -19,6 +19,8 @@ export interface GuestTravel {
 export interface GuestProfile {
   name?: string;
   avatarDataUrl?: string;
+  /** The sign-in account's photo (read-only here; set by rememberAccountImage). */
+  accountImageUrl?: string;
 }
 
 const STATUSES: ReadonlySet<string> = new Set<TravelStatus>(["home", "car", "plane", "arrived"]);
@@ -104,12 +106,18 @@ const AVATAR_PREFIX = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
 
 export async function getProfile(db: Db, guestId: string): Promise<GuestProfile> {
   const [row] = await db.select().from(guestProfiles).where(eq(guestProfiles.guestId, guestId));
-  return { name: row?.displayName ?? undefined, avatarDataUrl: row?.avatarDataUrl ?? undefined };
+  return toProfile(row);
 }
+
+const toProfile = (row: typeof guestProfiles.$inferSelect | undefined): GuestProfile => ({
+  name: row?.displayName ?? undefined,
+  avatarDataUrl: row?.avatarDataUrl ?? undefined,
+  accountImageUrl: row?.accountImageUrl ?? undefined,
+});
 
 export async function allProfiles(db: Db): Promise<Map<string, GuestProfile>> {
   const rows = await db.select().from(guestProfiles);
-  return new Map(rows.map((r) => [r.guestId, { name: r.displayName ?? undefined, avatarDataUrl: r.avatarDataUrl ?? undefined }]));
+  return new Map(rows.map((r) => [r.guestId, toProfile(r)]));
 }
 
 export async function saveProfile(db: Db, guestId: string, profile: GuestProfile): Promise<GuestProfile> {
@@ -125,4 +133,16 @@ export async function saveProfile(db: Db, guestId: string, profile: GuestProfile
     .values({ guestId, ...values })
     .onConflictDoUpdate({ target: guestProfiles.guestId, set: values });
   return getProfile(db, guestId);
+}
+
+/**
+ * Saves the photo URL from the guest's sign-in account (Google) so everyone
+ * sees it, not just them. Only https URLs are kept; null clears it.
+ */
+export async function rememberAccountImage(db: Db, guestId: string, url: string | null): Promise<void> {
+  const accountImageUrl = url && /^https:\/\/\S+$/.test(url) && url.length <= 2048 ? url : null;
+  await db
+    .insert(guestProfiles)
+    .values({ guestId, accountImageUrl, updatedAt: now() })
+    .onConflictDoUpdate({ target: guestProfiles.guestId, set: { accountImageUrl } });
 }

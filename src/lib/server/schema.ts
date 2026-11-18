@@ -45,6 +45,9 @@ export const guestProfiles = sqliteTable("guest_profiles", {
   displayName: text("display_name"),
   // 256px JPEG as a data URL (about 20–40 KB).
   avatarDataUrl: text("avatar_data_url"),
+  // The sign-in account's photo URL (Google), saved when the guest signs in so
+  // the rest of the crew sees it too. An uploaded photo wins over it.
+  accountImageUrl: text("account_image_url"),
   updatedAt: updatedAt(),
 });
 
